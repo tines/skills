@@ -1,0 +1,54 @@
+{
+  "$schema": "https://skills.sh/schemas/skills.sh.schema.json",
+  "notGrouped": "bottom",
+  "groupings": [
+    {
+      "title": "Build workflows",
+      "description": "Skills for designing and building composable workflows with Tines products.",
+      "skills": [
+        "building-agents",
+        "mcp-builder",
+        "mcp-client",
+        "workflow-discovery",
+        "workflow-volume-design"
+      ]
+    },
+    {
+      "title": "Operate workflows",
+      "description": "Skills for testing, operating, reviewing, and improving workflows with Tines products.",
+      "skills": [
+        "webapp-testing",
+        "workflow-operations",
+        "workflow-review"
+      ]
+    },
+    {
+      "title": "Design",
+      "description": "Skills for building polished interfaces and analytics dashboards.",
+      "skills": [
+        "dashboard-design",
+        "frontend-design"
+      ]
+    },
+    {
+      "title": "Research and communication",
+      "description": "Skills for gathering evidence and communicating useful outcomes.",
+      "skills": [
+        "cross-tool-research",
+        "daily-briefing",
+        "internal-comms",
+        "status-update"
+      ]
+    },
+    {
+      "title": "Tines and agent development",
+      "description": "Skills for Tines products, model APIs, and Agent Skills development.",
+      "skills": [
+        "claude-api",
+        "skill-creator",
+        "tines-cases",
+        "tines-export-to-3b"
+      ]
+    }
+  ]
+}
