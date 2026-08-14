@@ -18,13 +18,6 @@ Install one skill by name:
 npx skills add tines/skills --skill workflow-discovery
 ```
 
-For Claude Code, add this repository as a plugin marketplace, then install the collection:
-
-```text
-/plugin marketplace add tines/skills
-/plugin install tines-skills@tines-agent-skills
-```
-
 ## Available skills
 
 Skills can target different Tines products. Check each skill's `compatibility` frontmatter before loading it; all skills currently in this repository target Tines 3B.
