@@ -13,7 +13,7 @@ An MCP server exposes an external service to an AI as a set of tools. Its qualit
 
 - **Read the service’s API docs first.** Identify the key endpoints, the auth model, rate limits, and the core data shapes. Use web search and fetch the live docs rather than guessing.
 - **Read the MCP spec and SDK docs.** Start from the sitemap at `https://modelcontextprotocol.io/sitemap.xml`, then fetch specific pages with a `.md` suffix. For the SDKs, fetch the TypeScript SDK README (`github.com/modelcontextprotocol/typescript-sdk`) or Python SDK README (`github.com/modelcontextprotocol/python-sdk`).
-- **Decide coverage vs. workflow tools.** Comprehensive endpoint coverage gives the AI flexibility to compose operations; a few higher-level workflow tools are more convenient for common tasks. When unsure, prioritise comprehensive coverage and add workflow tools for the hot paths.
+- **Decide coverage vs. workflow tools.** Comprehensive endpoint coverage gives the AI flexibility to compose operations; a few higher-level workflow tools are more convenient for common tasks. When unsure, prioritize comprehensive coverage and add workflow tools for the hot paths.
 
 ## Phase 2 — Implement
 

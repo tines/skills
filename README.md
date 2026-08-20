@@ -20,50 +20,50 @@ npx skills add tines/skills --skill workflow-discovery
 
 ## Available skills
 
-Skills can target different Tines products. Check each skill's `compatibility` frontmatter before loading it; all skills currently in this repository target Tines 3B.
+Skills can target different Tines products. Check each skill’s `compatibility` frontmatter before loading it; all skills currently in this repository target Tines 3B.
 
 ### Build workflows
 
-| Skill | Purpose |
-| --- | --- |
-| [`building-agents`](skills/building-agents/) | Build model calls, tool-using agents, conversations, and chat UIs into 3B workflows. |
-| [`mcp-builder`](skills/mcp-builder/) | Build MCP servers, including servers deployed as authenticated 3B workflow routes. |
-| [`mcp-client`](skills/mcp-client/) | Call remote MCP servers over streamable HTTP from a 3B workflow. |
-| [`workflow-discovery`](skills/workflow-discovery/) | Turn an automation idea into a clear workflow brief and practical design. |
+| Skill                                                      | Purpose                                                                                       |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| [`building-agents`](skills/building-agents/)               | Build model calls, tool-using agents, conversations, and chat UIs into 3B workflows.          |
+| [`mcp-builder`](skills/mcp-builder/)                       | Build MCP servers, including servers deployed as authenticated 3B workflow routes.            |
+| [`mcp-client`](skills/mcp-client/)                         | Call remote MCP servers over streamable HTTP from a 3B workflow.                              |
+| [`workflow-discovery`](skills/workflow-discovery/)         | Turn an automation idea into a clear workflow brief and practical design.                     |
 | [`workflow-volume-design`](skills/workflow-volume-design/) | Design reliable filesystem state, named volumes, SQLite stores, and concurrent file handling. |
 
 ### Operate and improve workflows
 
-| Skill | Purpose |
-| --- | --- |
+| Skill                                                | Purpose                                                                             |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | [`workflow-operations`](skills/workflow-operations/) | Add schedules, triggers, notifications, retries, logging, and follow-on automation. |
-| [`workflow-review`](skills/workflow-review/) | Explain, test, simplify, and improve an existing workflow. |
-| [`webapp-testing`](skills/webapp-testing/) | Test web applications with Playwright from a code step. |
+| [`workflow-review`](skills/workflow-review/)         | Explain, test, simplify, and improve an existing workflow.                          |
+| [`webapp-testing`](skills/webapp-testing/)           | Test web applications with Playwright from a code step.                             |
 
 ### Design interfaces
 
-| Skill | Purpose |
-| --- | --- |
-| [`dashboard-design`](skills/dashboard-design/) | Build polished, interactive analytics dashboards. |
-| [`frontend-design`](skills/frontend-design/) | Create distinctive, production-grade frontend interfaces. |
+| Skill                                          | Purpose                                                   |
+| ---------------------------------------------- | --------------------------------------------------------- |
+| [`dashboard-design`](skills/dashboard-design/) | Build polished, interactive analytics dashboards.         |
+| [`frontend-design`](skills/frontend-design/)   | Create distinctive, production-grade frontend interfaces. |
 
 ### Research and communication
 
-| Skill | Purpose |
-| --- | --- |
-| [`cross-tool-research`](skills/cross-tool-research/) | Find and correlate information across connectors. |
-| [`daily-briefing`](skills/daily-briefing/) | Build concise briefings from calendars, tasks, tickets, messages, and documents. |
-| [`internal-comms`](skills/internal-comms/) | Write clear internal updates, reports, FAQs, and newsletters. |
-| [`status-update`](skills/status-update/) | Draft evidence-based status updates from recent work. |
+| Skill                                                | Purpose                                                                          |
+| ---------------------------------------------------- | -------------------------------------------------------------------------------- |
+| [`cross-tool-research`](skills/cross-tool-research/) | Find and correlate information across connectors.                                |
+| [`daily-briefing`](skills/daily-briefing/)           | Build concise briefings from calendars, tasks, tickets, messages, and documents. |
+| [`internal-comms`](skills/internal-comms/)           | Write clear internal updates, reports, FAQs, and newsletters.                    |
+| [`status-update`](skills/status-update/)             | Draft evidence-based status updates from recent work.                            |
 
 ### Tines and agent development
 
-| Skill | Purpose |
-| --- | --- |
-| [`claude-api`](skills/claude-api/) | Build, debug, and optimize code that calls the Claude API. |
-| [`skill-creator`](skills/skill-creator/) | Write and improve 3B Agent Skills. |
-| [`tines-cases`](skills/tines-cases/) | Work with Tines Cases and Records from 3B. |
-| [`tines-export-to-3b`](skills/tines-export-to-3b/) | Rebuild a Tines story export as a 3B workflow. |
+| Skill                                              | Purpose                                                    |
+| -------------------------------------------------- | ---------------------------------------------------------- |
+| [`claude-api`](skills/claude-api/)                 | Build, debug, and optimize code that calls the Claude API. |
+| [`skill-creator`](skills/skill-creator/)           | Write and improve 3B Agent Skills.                         |
+| [`tines-cases`](skills/tines-cases/)               | Work with Tines Cases and Records from 3B.                 |
+| [`tines-export-to-3b`](skills/tines-export-to-3b/) | Rebuild a Tines story export as a 3B workflow.             |
 
 ## Structure
 

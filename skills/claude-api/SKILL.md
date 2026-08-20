@@ -11,7 +11,7 @@ Use the official Anthropic SDK for the language you are in (`anthropic` for Pyth
 
 ## Pick the simplest surface that works
 
-- **Single call** — classification, summarisation, extraction, Q&A. One request, one response.
+- **Single call** — classification, summarization, extraction, Q&A. One request, one response.
 - **Workflow (call + tool use)** — multi-step logic you orchestrate in code. You control the loop; Claude calls the tools you define.
 - **Agent** — Claude decides its own trajectory using your tools. Only reach for this when the task is genuinely open-ended, the value justifies the cost, and errors are recoverable.
 
