@@ -19,7 +19,7 @@ After building, document the migration in the workflow README. Cover:
 
 - **Link back to the original** - If the JSON export contains a `story_url` then include this at the top of the migration report as a hyperlink "View original story on Tines".
 - **What was migrated** — the Tines actions and how each maps to its 3B step.
-- **What changed shape** — anything that isn't a 1:1 port (fan-out → single-run loops, Implode → SQLite join, formulas → code), so the user knows where behaviour may differ.
+- **What changed shape** — anything that isn't a 1:1 port (fan-out → single-run loops, Implode → SQLite join, formulas → code), so the user knows where behavior may differ.
 - **What needs a human** — flag everything you couldn't fully reproduce or that needs the user to finish: e.g. agentic AI actions, missing credentials, anything where a formula/date/type-coercion translation is uncertain.
 - **What to double-check** — call out the silent-failure risks (missing fields, type coercion, cross-run dedup) so the user knows where to verify.
 - **Existing Tines dependencies** — any calls back to Tines for Resources / Records etc. This will be important for the customer if they look to ever decommission their Tines Stories infrastructure and move fully to 3B.
@@ -57,24 +57,24 @@ Handle `parent_only_send_to_story` as follows:
 - **Rule + AI** — fixed template, but you fill in the formula/code/values.
 - **Decision** — don't build it; it's a product call (usually out of scope).
 
-### 🎨 Match node colours to the Tines action colours
+### 🎨 Match node colors to the Tines action colors
 
-Tines action colours are determined by the action _type_. When you build the corresponding step in 3B, **set the node's colour according to the source action type** using the map below. This keeps the rebuilt workflow visually legible and lets the user map a 3B step back to its original action at a glance.
+Tines action colors are determined by the action _type_. When you build the corresponding step in 3B, **set the node's color according to the source action type** using the map below. This keeps the rebuilt workflow visually legible and lets the user map a 3B step back to its original action at a glance.
 
-| Tines Colour | Tines action type(s)                                            | Closest 3B Colour |
-| ------------ | --------------------------------------------------------------- | ----------------- |
-| **Indigo**   | case, form/page, group, record, run script, send to story, tool | purple            |
-| **Blue**     | httpRequest, grpcRequest, mcpRequest, integrationProduct        | sky               |
-| **Green**    | trigger (condition step)                                        | green             |
-| **Mint**     | webhook                                                         | teal              |
-| **Orange**   | eventTransformation                                             | orange            |
-| **Magenta**  | email                                                           | pink              |
-| **Red**      | imap                                                            | red               |
-| **Gold**     | llm                                                             | orange            |
-| **Grey**     | groupInput, groupOutput                                         | (no equivalent)   |
+| Tines color | Tines action type(s)                                            | Closest 3B color |
+| ----------- | --------------------------------------------------------------- | ---------------- |
+| **Indigo**  | case, form/page, group, record, run script, send to story, tool | purple           |
+| **Blue**    | httpRequest, grpcRequest, mcpRequest, integrationProduct        | sky              |
+| **Green**   | trigger (condition step)                                        | green            |
+| **Mint**    | webhook                                                         | teal             |
+| **Orange**  | eventTransformation                                             | orange           |
+| **Magenta** | email                                                           | pink             |
+| **Red**     | imap                                                            | red              |
+| **Gold**    | llm                                                             | orange           |
+| **Grey**    | groupInput, groupOutput                                         | (no equivalent)  |
 
-- Where a single Tines action maps to multiple 3B steps (e.g. fan-out → loop, Implode → SQLite join), give the related steps the same colour so the group stays identifiable.
-- Colour is a best-effort cosmetic aid, not a behavioural mapping.
+- Where a single Tines action maps to multiple 3B steps (e.g. fan-out → loop, Implode → SQLite join), give the related steps the same color so the group stays identifiable.
+- Color is a best-effort cosmetic aid, not a behavioral mapping.
 
 ---
 
@@ -89,7 +89,7 @@ Tines action colours are determined by the action _type_. When you build the cor
 | Resources                            | 'Tines Stories' connector + store in volume | Rule + AI. When a resource is referenced in a story, use the 'Tines Stories' connector to fetch the resource using the Resource API's `get` endpoint and store the resulting file in a volume. **IMPORTANT:** Fetch and read the API [documentation](https://www.tines.com/llm/docs/api/resources/get.md) before writing the API call as you may need to pass up the `typed_value` parameter. This must be done as a step **before** the resource is used in the workflow. |
 | Story description / storyboard notes | README (workflow- or step-level)            | Rule. Action-specific notes go in that step's README; story-wide descriptions and storyboard annotations go in the workflow README. Don't drop them — they're the migrator's intent, and they make the rest of the migration legible.                                                                                                                                                                                                                                      |
 | Monitoring / reporting / time-saved  | Mostly built in                             | Rule. Monitoring is supported today; richer reporting is in progress. Don't rebuild these per-workflow — they're platform features.                                                                                                                                                                                                                                                                                                                                        |
-| Action colour                        | Match the 3B node colour to action _type_   | Rule. Colours aren't in the export — set them by action type per the colour map (Indigo, Blue, Green, Mint, Orange, Magenta, Red, Gold, Grey). One action → many steps: share one colour. Cosmetic only.                                                                                                                                                                                                                                                                   |
+| Action color                         | Match the 3B node color to action _type_    | Rule. Colors aren't in the export — set them by action type per the color map (Indigo, Blue, Green, Mint, Orange, Magenta, Red, Gold, Grey). One action → many steps: share one color. Cosmetic only.                                                                                                                                                                                                                                                                      |
 
 ---
 

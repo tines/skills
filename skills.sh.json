@@ -16,19 +16,12 @@
     {
       "title": "Operate workflows",
       "description": "Skills for testing, operating, reviewing, and improving workflows with Tines products.",
-      "skills": [
-        "webapp-testing",
-        "workflow-operations",
-        "workflow-review"
-      ]
+      "skills": ["webapp-testing", "workflow-operations", "workflow-review"]
     },
     {
       "title": "Design",
       "description": "Skills for building polished interfaces and analytics dashboards.",
-      "skills": [
-        "dashboard-design",
-        "frontend-design"
-      ]
+      "skills": ["dashboard-design", "frontend-design"]
     },
     {
       "title": "Research and communication",
