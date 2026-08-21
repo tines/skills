@@ -4,7 +4,7 @@ This repository publishes Agent Skills for Tines products. Keep every skill port
 
 ## Skill structure
 
-Place each skill at `skills/<skill-name>/SKILL.md`. Optional supporting files belong in `scripts/`, `references/`, or `assets/` within that skill’s directory.
+Place each skill at `skills/<skill-name>/SKILL.md`. Optional agent-readable supporting files belong in `scripts/`, `references/`, or `assets/` within that skill’s directory. Product-specific client metadata belongs in `agents/`; keep it optional so clients that do not support it can still use the skill.
 
 Follow the [Agent Skills specification](https://agentskills.io/specification):
 
@@ -14,6 +14,7 @@ Follow the [Agent Skills specification](https://agentskills.io/specification):
 - Set `compatibility` to the intended Tines product when a skill is product-specific (for example, `Tines 3B`).
 - Keep the body focused on instructions an agent needs after the skill triggers.
 - Link supporting files directly from `SKILL.md` so an agent can load them only when needed.
+- Put OpenAI-specific interface metadata in `agents/openai.yaml`, not in `SKILL.md`.
 - Preserve copyright and modification notices in derivative skills.
 
 Run `gh skill publish --dry-run` before submitting a change.

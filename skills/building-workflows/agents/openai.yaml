@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build 3B workflows"
+  short_description: "Build and modify Tines 3B workflows"
+  default_prompt: "Use $building-workflows to build or modify this Tines 3B workflow."
