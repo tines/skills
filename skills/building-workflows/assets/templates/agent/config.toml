@@ -1,0 +1,5 @@
+color = "purple"
+timeout = 300
+# Add a route (e.g. route = "chat") plus output = true to let callers invoke the
+# agent directly and receive the event stream as the HTTP response; without a
+# route it is headless — the upstream step's output is its input.

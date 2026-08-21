@@ -26,6 +26,7 @@ Skills can target different Tines products. Check each skill’s `compatibility`
 
 | Skill                                                      | Purpose                                                                                       |
 | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| [`building-workflows`](skills/building-workflows/)         | Build and modify complete 3B workflows through Git, MCP, the CLI, or the in-product editor.   |
 | [`building-agents`](skills/building-agents/)               | Build model calls, tool-using agents, conversations, and chat UIs into 3B workflows.          |
 | [`mcp-builder`](skills/mcp-builder/)                       | Build MCP servers, including servers deployed as authenticated 3B workflow routes.            |
 | [`mcp-client`](skills/mcp-client/)                         | Call remote MCP servers over streamable HTTP from a 3B workflow.                              |
@@ -67,7 +68,7 @@ Skills can target different Tines products. Check each skill’s `compatibility`
 
 ## Structure
 
-Each directory under `skills/` is a self-contained skill with a required `SKILL.md` and any supporting scripts, references, or assets it needs.
+Each directory under `skills/` is a self-contained skill with a required `SKILL.md` and any agent-readable scripts, references, or assets it needs. Optional product-specific client metadata lives under `agents/`, such as OpenAI interface metadata in `agents/openai.yaml`; clients that do not support it can ignore it.
 
 ## License
 
