@@ -1,0 +1,100 @@
+name: Release Agent Skills
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Repository version in vX.Y.Z form
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: release-agent-skills
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: skills-release
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+          ref: main
+
+      - name: Check release request
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "Run this workflow from the main branch." >&2
+            exit 1
+          fi
+
+          if [[ ! "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Version must use vX.Y.Z without leading zeroes." >&2
+            exit 1
+          fi
+
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${VERSION}" >/dev/null 2>&1; then
+            echo "Tag ${VERSION} already exists." >&2
+            exit 1
+          fi
+
+          if [ "$(gh api "repos/${GITHUB_REPOSITORY}/topics" --jq '.names | index("agent-skills") != null')" != "true" ]; then
+            echo "Add the agent-skills repository topic before releasing." >&2
+            exit 1
+          fi
+
+          release_sha=$(git rev-parse HEAD)
+          echo "sha=${release_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          remote_main_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/main" --jq .object.sha)
+          if [ "$RELEASE_SHA" != "$remote_main_sha" ]; then
+            echo "Main changed during validation. Run the workflow again." >&2
+            exit 1
+          fi
+
+          gh skill publish --tag "$VERSION"
+
+      - name: Verify release
+        env:
+          RELEASE_SHA: ${{ steps.release.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch origin "refs/tags/${VERSION}:refs/tags/${VERSION}"
+          if [ "$(git rev-list -n 1 "$VERSION")" != "$RELEASE_SHA" ]; then
+            echo "Tag ${VERSION} does not point to the validated commit." >&2
+            exit 1
+          fi
+
+          if [ "$(gh release view "$VERSION" --json isDraft --jq .isDraft)" != "false" ]; then
+            echo "Release ${VERSION} is unexpectedly a draft." >&2
+            exit 1
+          fi
+
+      - name: Smoke test pinned installation
+        run: |
+          gh skill install "$GITHUB_REPOSITORY" \
+            --all \
+            --pin "$VERSION" \
+            --dir "$RUNNER_TEMP/installed-skills"
