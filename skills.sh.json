@@ -6,6 +6,7 @@
       "title": "Build workflows",
       "description": "Skills for designing and building composable workflows with Tines products.",
       "skills": [
+        "building-workflows",
         "building-agents",
         "mcp-builder",
         "mcp-client",
