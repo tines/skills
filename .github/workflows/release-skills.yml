@@ -1,12 +1,10 @@
 name: Release Agent Skills
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      version:
-        description: Repository version in vX.Y.Z form
-        required: true
-        type: string
 
 permissions: {}
 
@@ -18,19 +16,19 @@ jobs:
   release:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-    environment: skills-release
     permissions:
       contents: write
+      pull-requests: read
     env:
       GH_TOKEN: ${{ github.token }}
-      VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          filter: blob:none
+          fetch-depth: 0
           persist-credentials: false
-          ref: main
 
-      - name: Check release request
+      - name: Check for skills to release
         id: release
         shell: bash
         run: |
@@ -41,13 +39,75 @@ jobs:
             exit 1
           fi
 
-          if [[ ! "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
-            echo "Version must use vX.Y.Z without leading zeroes." >&2
-            exit 1
+          latest_tag=$(git for-each-ref \
+            --count=1 \
+            --sort=-version:refname \
+            --format="%(refname:short)" \
+            "refs/tags/v*")
+          if [ -z "$latest_tag" ]; then
+            version="v1.0.0"
+          else
+            if [[ ! "$latest_tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+              echo "Latest release tag ${latest_tag} is not in vX.Y.Z form." >&2
+              exit 1
+            fi
+            major=${BASH_REMATCH[1]}
+            minor=${BASH_REMATCH[2]}
+            patch=${BASH_REMATCH[3]}
+
+            if git diff --quiet "$latest_tag" HEAD -- skills skills.sh.json; then
+              echo "No skill changes to release since ${latest_tag}."
+              exit 0
+            fi
+
+            bump="patch"
+            while IFS=$'\t' read -r status _; do
+              case "$status" in
+                D)
+                  bump="major"
+                  break
+                  ;;
+                A)
+                  bump="minor"
+                  ;;
+              esac
+            done < <(git diff --name-status --no-renames "$latest_tag" HEAD -- "skills/*/SKILL.md")
+
+            release_label=""
+            while IFS= read -r commit_sha; do
+              labels=$(gh api \
+                "repos/${GITHUB_REPOSITORY}/commits/${commit_sha}/pulls" \
+                --jq '[.[].labels[].name | select(. == "release:major" or . == "release:minor" or . == "release:patch")] | unique | .[]')
+              while IFS= read -r label; do
+                [ -z "$label" ] && continue
+                if [ -n "$release_label" ] && [ "$release_label" != "$label" ]; then
+                  echo "Multiple release labels found since ${latest_tag}: ${release_label} and ${label}." >&2
+                  exit 1
+                fi
+                release_label=$label
+              done <<< "$labels"
+            done < <(git rev-list --first-parent "${latest_tag}..HEAD")
+
+            if [ -n "$release_label" ]; then
+              bump=${release_label#release:}
+            fi
+
+            case "$bump" in
+              major)
+                version="v$((major + 1)).0.0"
+                ;;
+              minor)
+                version="v${major}.$((minor + 1)).0"
+                ;;
+              patch)
+                version="v${major}.${minor}.$((patch + 1))"
+                ;;
+            esac
+            echo "Selected a ${bump} release: ${latest_tag} -> ${version}."
           fi
 
-          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${VERSION}" >/dev/null 2>&1; then
-            echo "Tag ${VERSION} already exists." >&2
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${version}" >/dev/null 2>&1; then
+            echo "Tag ${version} already exists." >&2
             exit 1
           fi
 
@@ -58,10 +118,13 @@ jobs:
 
           release_sha=$(git rev-parse HEAD)
           echo "sha=${release_sha}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
 
       - name: Publish release
+        if: steps.release.outputs.version != ''
         env:
           RELEASE_SHA: ${{ steps.release.outputs.sha }}
+          VERSION: ${{ steps.release.outputs.version }}
         shell: bash
         run: |
           set -euo pipefail
@@ -75,8 +138,10 @@ jobs:
           gh skill publish --tag "$VERSION"
 
       - name: Verify release
+        if: steps.release.outputs.version != ''
         env:
           RELEASE_SHA: ${{ steps.release.outputs.sha }}
+          VERSION: ${{ steps.release.outputs.version }}
         shell: bash
         run: |
           set -euo pipefail
@@ -93,6 +158,9 @@ jobs:
           fi
 
       - name: Smoke test pinned installation
+        if: steps.release.outputs.version != ''
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
         run: |
           gh skill install "$GITHUB_REPOSITORY" \
             --all \
