@@ -29,4 +29,4 @@ Login opens the tenant’s 3B UI for approval by default; pass `--no-browser` to
 
 ## In-product editor
 
-The in-product editor presents one workflow as a filesystem and supplies the templates and workflow tools directly. Copy a template to create a step, read a file in the same turn before changing it with `editFile` or `writeFile`, attach connectors through connector tools, run every changed step, and run any pinned tests reported by an edit. Use the publish tool only when the user explicitly asks to push the draft Live; the confirmation happens in the tool’s UI.
+The in-product editor presents one workflow as a filesystem and supplies the templates and workflow tools directly. Copy a template to create a step, read a file in the same turn before changing it with `editFile` or `writeFile`, attach connectors through connector tools, run every changed step, and run any pinned tests reported by an edit. Copy user uploads into the target step with the upload tool and import the copied file; never recreate an uploaded asset from scratch. Use the publish tool only when the user explicitly asks to push the draft Live; the confirmation happens in the tool’s UI.
