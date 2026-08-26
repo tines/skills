@@ -82,6 +82,8 @@ pinned = true
 
 Each step is an isolated process. Its raw stdout becomes stdin for every linked downstream step. Fan-out runs in parallel. With multiple upstream steps, the most recent successful upstream output is used.
 
+Triggers compose with links. A step with `route` can also be a downstream target or link to itself. An external invocation supplies a complete HTTP request on stdin, while a linked invocation supplies the upstream step’s raw stdout, so code reached both ways must handle both input shapes.
+
 Zero-byte stdout suppresses downstream execution. A step reports failure only through a nonzero exit status. Do not catch an error, log it, and continue unless success is intentional. 3B retains at most 10 KiB of stderr as its diagnostic output; stdout is the workflow data channel.
 
 A step with no trigger receives empty stdin. A route step receives a complete RFC 7230 HTTP request. An email step receives the raw RFC 822 message.
