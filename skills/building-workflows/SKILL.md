@@ -109,6 +109,8 @@ An API route intended for callers should include `api.json`: a nonempty object k
 
 `space` and `tenant` routes accept a browser session, a 3B API key, or a 3B OAuth access token. `sso` authenticates external users through the tenant’s configured SAML or OIDC provider without creating a 3B account. When the tenant has more than one SSO provider, add `route_idp = "<provider ID>"` next to `route_auth = "sso"` to designate which provider gates the route; without it, the tenant’s primary provider is used. Only set `route_idp` to one of the tenant’s registered provider IDs — never invent one. Successful `space`, `tenant`, and `sso` authentication adds a spoof-proof `x-3b-authenticated-email` header. 3B strips its bearer token before invoking step code. A `connector` route is called only through a workflow-backed connector; the proxy supplies its authentication header.
 
+A route accepting OAuth clients should render its own consent screen: when a client signs in, 3B serves the route with unspoofable `x-3b-consent-*` headers (a signed challenge, a decision URL, and display values), and the step returns an HTML Allow/Deny page that posts the decision back (the mcp-builder skill documents the contract). No config key or extra route is needed; a step that ignores the headers gets a neutral built-in screen.
+
 When adding or changing a route, tell the user who can access it. Do not describe a route as public when draft access is still floored to space membership.
 
 When code embeds one of its workflow’s own route URLs, prefix the path with `/__3b/branch/${process.env._3B_BRANCH_ID}` on a draft. Use the plain path when `_3B_BRANCH_ID` is empty. Never persist a branch ID in source.
