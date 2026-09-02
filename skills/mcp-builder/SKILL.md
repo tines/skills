@@ -48,6 +48,20 @@ Your step then receives only authenticated requests, with the consenting user’
 
 To serve an **external audience** — partner organizations or customers whose users are not 3B members — use `route_auth = "sso"`. When the tenant has its own SSO provider registered in SSO settings with a pinned email domain (the built-in 3B sign-in doesn’t count), the platform runs the same client-facing OAuth handshake, but consent authenticates the human against that provider instead of a 3B account: callers hold a valid token vouched for by the tenant’s provider and on its pinned domain, with no 3B user, membership, or space access involved, and `x-3b-authenticated-email` carries the email the IdP vouched for.
 
+### Always render your own consent screen
+
+The consent screen is the first thing a connecting user sees, so the workflow should own it — no config key, no second route. When a client signs in, 3B serves the OAuth route itself with a set of unspoofable request headers, and your step renders consent in response to them:
+
+- `x-3b-consent-challenge` — an opaque signed token; echo it back untouched. It is the only thing with any authority.
+- `x-3b-consent-decision-url` — where to send the decision.
+- `x-3b-consent-client`, `x-3b-consent-email`, `x-3b-consent-scope` — display values for the copy.
+
+When your step sees `x-3b-consent-challenge`, return an HTML page (set response header `x-3b-consent: rendered` so 3B serves it) showing the requesting client, the signed-in email, and Allow/Deny buttons in your own branding. Each button submits a plain form POST to the decision URL with fields `challenge` (the echoed token) and `decision` (`approve` or `deny`); 3B verifies it and finishes the OAuth flow, so the page needs no crypto, cookies, or state. When the header is absent, serve your normal response. A pure API server with no UI can simply not handle the header — 3B then shows a neutral built-in screen.
+
+HTML-escape the display values before rendering them: `x-3b-consent-client` is chosen by the connecting client when it registers, so treat it as untrusted, and the page shares the tenant’s public origin, so an unescaped injection is not confined to this workflow.
+
+Challenges expire after ten minutes and 3B forces `Cache-Control: no-store` and denies framing on a consent render, so don’t fight those headers. Draft branches render consent the same way, so you can iterate before publishing.
+
 This is the auth model for the MCP server _itself_. It is separate from how your tools authenticate to the external service they wrap (Phase 1) — that still uses the service’s own credentials.
 
 ## Phase 3 — Review and test
