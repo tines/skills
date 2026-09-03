@@ -135,7 +135,7 @@ Never ask a user to paste a key, token, password, username, or other credential 
 
 Cache mounts use `RUN --mount=type=cache,target=<name>`, where `<name>` is one work-directory-relative segment containing letters, digits, `.`, `_`, or `-`. Do not use an absolute cache path. Add npm dependencies to `package.json` so the template’s existing Bun install layer can cache them.
 
-`LABEL io.3b.exec.checkpoint.v2=true` opts into application-defined checkpoint and restore. Do not add it by default. Use it only when the user asks to reuse expensive initialized memory: initialize repeatably, call `/opt/3b/next` to define the checkpoint boundary, parse its `{ execId, env }` JSON after restore, and read execution input and access volumes only after that boundary. Each restored sandbox is single-use, and anything that must be fresh belongs after `next`.
+`LABEL io.3b.exec.checkpoint.v2=true` opts into application-defined checkpoint and restore. Do not add it by default. Use it only when the user asks to reuse expensive initialized memory: initialize repeatably, call `/opt/3b/next` to define the checkpoint boundary, parse its `{ execId, env }` JSON after restore, and read execution input and access volumes only after that boundary. Each restored sandbox is single-use, and anything that must be fresh belongs after `next`. Open network connections and listeners only after `next`: a socket that is still open when `next` is called fails the checkpoint, because it cannot survive restore.
 
 ## Volumes
 
