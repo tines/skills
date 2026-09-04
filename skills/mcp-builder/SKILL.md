@@ -48,6 +48,28 @@ Your step then receives only authenticated requests, with the consenting user’
 
 To serve an **external audience** — partner organizations or customers whose users are not 3B members — use `route_auth = "sso"`. When the tenant has its own SSO provider registered in SSO settings with a pinned email domain (the built-in 3B sign-in doesn’t count), the platform runs the same client-facing OAuth handshake, but consent authenticates the human against that provider instead of a 3B account: callers hold a valid token vouched for by the tenant’s provider and on its pinned domain, with no 3B user, membership, or space access involved, and `x-3b-authenticated-email` carries the email the IdP vouched for.
 
+### Every request is a run, so refuse what you don’t serve
+
+3B hands your step the raw HTTP request on stdin and turns every request into a workflow run, whatever the method (3B answers `OPTIONS` preflights itself, so your step never sees them). Streamable-HTTP clients open a `GET` on the endpoint to listen for server-to-client messages, and the spec requires you to either hold that stream open or answer `405 Method Not Allowed`. A `200` on `GET` tells the client the stream closed, so compliant clients reconnect immediately: one server that did this received a reconnect every two seconds from each connected Claude Code session, and each one was a full run. The one `GET` you must serve is the consent render described below, which arrives with `x-3b-consent-challenge`. After that check, answer `405` to anything but `POST` before parsing a body or touching a connector. With `method` and lowercased `headers` parsed from the request on stdin:
+
+```ts
+if (!headers["x-3b-consent-challenge"] && method !== "POST") {
+  const body = JSON.stringify({
+    jsonrpc: "2.0",
+    id: null,
+    error: {
+      code: -32000,
+      message: "Stateless MCP endpoint; send JSON-RPC over POST.",
+    },
+  });
+  process.stdout.write(
+    `HTTP/1.1 405 Method Not Allowed\r\nAllow: POST\r\nContent-Type: application/json\r\nContent-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`
+  );
+} else {
+  // render consent when x-3b-consent-challenge is present, otherwise parse the JSON-RPC body
+}
+```
+
 ### Always render your own consent screen
 
 The consent screen is the first thing a connecting user sees, so the workflow should own it — no config key, no second route. When a client signs in, 3B serves the OAuth route itself with a set of unspoofable request headers, and your step renders consent in response to them:
