@@ -147,3 +147,5 @@ Volumes are named POSIX directories mounted below `/storage`. Names contain 1–
 - `VOLUME ["scratch:scope=run"]` gives one workflow run isolated writable storage shared by steps in that run.
 
 In Live, a volume belongs to the space and is selected by name, so workflows in the same space share a named volume. Draft branches have isolated files that are discarded with the draft. A step writes through a private view and publishes its changes only when it succeeds. Prefer read-only mounts for readers, finish slow network or model work before entering an exclusive writer, and treat any multi-file state that must stay consistent as one logical file group.
+
+Volumes are not suitable for storing secrets.
