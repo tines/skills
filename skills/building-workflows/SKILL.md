@@ -117,6 +117,10 @@ When code embeds one of its workflow’s own route URLs, prefix the path with `/
 
 Cookies are pinned to the serving host. 3B strips `Domain`, changes `SameSite=None` to `SameSite=Lax`, signs `HttpOnly` values for the space, and forces `Secure` on HTTPS responses. Prefer `__Host-` cookie names with `Path=/`, `Secure`, and `HttpOnly`; omit `HttpOnly` only when browser JavaScript must read the cookie.
 
+Keep APIs synchronous only for short, bounded work. For long or variable work, promptly return `202 Accepted` with a durable operation ID and status URL, then continue downstream. Because that HTTP response becomes downstream stdin, include the operation ID and required job payload in its body and parse the HTTP message in the next step. Persist pending, succeeded, and failed state in a named volume, and make retries idempotent. An empty automatic `202` is only for fire-and-forget work; use `201 Created` only when the requested resource has been created before responding.
+
+Stream when incremental output is useful, but streaming and keepalives are not durable. When completion matters, persist progress and provide a status or resume path; client and proxy timeouts, network interruptions, and deployment draining may end the request before the step’s `timeout`.
+
 ## Other runtime contracts
 
 `email_address` is a lowercase local-part of letters, digits, and internal dashes, up to 64 characters; it must begin and end with a letter or digit and be unique in the deployment’s configured inbound-email scope. The full address is deployment-specific.
