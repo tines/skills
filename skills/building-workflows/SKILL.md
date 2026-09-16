@@ -133,6 +133,12 @@ Use connectors whenever a step or build-time investigation needs authenticated a
 
 Never ask a user to paste a key, token, password, username, or other credential into chat. If a credential appears anyway, do not put it in files or commands; use a connector and tell the user to rotate the exposed credential. Disconnect with connector tooling rather than editing `config.toml`.
 
+## Tunnels
+
+3B’s native tunnels let steps reach private services using their normal hostnames, ports, and clients. An exit-node container runs inside the customer’s network or VPC and connects outbound to the 3B gateway; no inbound internet access is needed. Grant the workflow’s space access through the network’s Access tab. Matching hostname or CIDR destinations route through the tunnel, subject to egress rules. Connectors handle authentication separately.
+
+Creating a tunnel requires tunnels to be enabled for the deployment and permission to create networks, available through the Network creator role. For setup, link to [Networking](/settings/networking) or [New tunnel network](/settings/networking/new). In external interfaces, prefix these links with the tenant’s UI origin. You can help provision the exit-node container using the generated setup instructions, with access to the private destinations and outbound access to the gateway. Have the user save the token shown once at creation and supply it locally as `TUNNEL_TOKEN`; a lost token requires a new network.
+
 ## Dockerfile
 
 `FROM 3b/base` is the only supported base and must be the first instruction. Preserve the template’s existing lines. 3B supports `RUN <command>`, `COPY <sources...> .`, `CMD <command>`, `LABEL`, and `VOLUME`; unsupported Dockerfile instructions are ignored rather than providing normal Docker semantics. `RUN` supports line continuations and quoted heredocs. Labels other than the checkpoint opt-in below do not affect execution.
