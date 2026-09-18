@@ -9,6 +9,26 @@ compatibility: Tines 3B
 
 Use the official Anthropic SDK for the language you are in (`anthropic` for Python, `@anthropic-ai/sdk` for TypeScript), or raw HTTP only when there is no SDK or the request is explicitly a cURL/REST one. Never mix the two, and never swap in an OpenAI-compatible shim. Read the API key from a 3B credential or connector rather than hardcoding it.
 
+## Connector URLs and authentication
+
+For Anthropic and Microsoft Foundry Claude connectors, pass a placeholder API key; the proxy injects the real key. Keep the saved connector URL including `/v1` for connection tests and credential injection. The official SDK appends `/v1`, so remove only that suffix when constructing its client, preserving gateway prefixes such as `/anthropic`:
+
+```typescript
+const client = new Anthropic({
+  baseURL: process.env.ANTHROPIC_BASE_URL!.trim().replace(/\/v1\/?$/, ""),
+  apiKey: "placeholder",
+});
+```
+
+```python
+client = anthropic.Anthropic(
+    base_url=os.environ["ANTHROPIC_BASE_URL"].strip().rstrip("/").removesuffix("/v1"),
+    api_key="placeholder",
+)
+```
+
+Use `ANTHROPIC_BASE_URL` unchanged with `@ai-sdk/anthropic`; for raw HTTP, trim its trailing slash and append `/messages`.
+
 ## Pick the simplest surface that works
 
 - **Single call** — classification, summarization, extraction, Q&A. One request, one response.
