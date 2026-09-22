@@ -109,7 +109,7 @@ An API route intended for callers should include `api.json`: a nonempty object k
 
 `space` and `tenant` routes accept a browser session, a 3B API key, or a 3B OAuth access token. `sso` authenticates external users through the tenant’s configured SAML or OIDC provider without creating a 3B account. When the tenant has more than one SSO provider, add `route_idp = "<provider ID>"` next to `route_auth = "sso"` to designate which provider gates the route; without it, the tenant’s primary provider is used. Only set `route_idp` to one of the tenant’s registered provider IDs — never invent one. Successful `space`, `tenant`, and `sso` authentication adds a spoof-proof `x-3b-authenticated-email` header. 3B strips its bearer token before invoking step code. A `connector` route is called only through a workflow-backed connector; the proxy supplies its authentication header.
 
-A route accepting OAuth clients should render its own consent screen: when a client signs in, 3B serves the route with unspoofable `x-3b-consent-*` headers (a signed challenge, a decision URL, and display values), and the step returns an HTML Allow/Deny page that posts the decision back (the mcp-builder skill documents the contract). No config key or extra route is needed; a step that ignores the headers gets a neutral built-in screen.
+A route accepting OAuth clients should render its own consent screen: when a client signs in, 3B serves the route with unspoofable `x-3b-consent-*` headers (a signed challenge, a decision URL, display values, and the caller’s connector grants when the route uses visitor-mode connectors), and the step returns an HTML Allow/Deny page that posts the decision back (the mcp-builder skill documents the contract). No config key or extra route is needed; a step that ignores the headers gets a neutral built-in screen.
 
 When adding or changing a route, tell the user who can access it. Do not describe a route as public when draft access is still floored to space membership.
 
@@ -132,6 +132,8 @@ Each running step is limited to 1 vCPU, 2 GiB of memory with no swap, and 25,000
 Use connectors whenever a step or build-time investigation needs authenticated access to another service. When the workflow depends on the service at runtime, write ordinary requests without `Authorization` headers, API keys, or credential placeholders, then attach the connector to that step through the current interface’s connector tooling. When the service is only a build aid, connect it to the chat or execution context if the interface supports that, and do not modify a step. Prefer an exact literal target URL, including the scheme, hostname, and representative path, when known; otherwise search by service name. Follow only the environment variables and usage notes returned by the connector’s AI context.
 
 Never ask a user to paste a key, token, password, username, or other credential into chat. If a credential appears anyway, do not put it in files or commands; use a connector and tell the user to rotate the exposed credential. Disconnect with connector tooling rather than editing `config.toml`.
+
+If a connector cannot support the required authentication, explain the limitation. Do not build credential-entry forms or routes as a workaround: workflow request bodies are retained as execution inputs.
 
 ## Tunnels
 
@@ -158,4 +160,4 @@ Volumes are named POSIX directories mounted below `/storage`. Names contain 1–
 
 In Live, a volume belongs to the space and is selected by name, so workflows in the same space share a named volume. Draft branches have isolated files that are discarded with the draft. A step writes through a private view and publishes its changes only when it succeeds. Prefer read-only mounts for readers, finish slow network or model work before entering an exclusive writer, and treat any multi-file state that must stay consistent as one logical file group.
 
-Volumes are not suitable for storing secrets.
+Never store passwords, API keys, OAuth tokens, private keys, or reusable session credentials in volumes, even when the user requests it. File permissions, exclusive mounts, and calling a file “session state” do not make it a secret store. When replacing existing secret storage, tell the user to rotate exposed credentials and account for existing volume files and retained execution inputs; changing the code does not remove those copies.

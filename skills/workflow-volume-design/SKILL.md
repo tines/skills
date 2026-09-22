@@ -21,6 +21,8 @@ Use user-facing names for steps, such as "Receive input", "Store files", "Genera
 
 A volume is a named POSIX directory mounted at `/storage/<name>`. A step can open, read, write, rename, delete, and list files there just like a local filesystem. The name selects the storage; options on the `VOLUME` declaration independently control lifetime, access, and writer scheduling.
 
+Follow the [secret-storage prohibition and cleanup guidance](../building-workflows/SKILL.md#volumes) when choosing what to persist.
+
 1. Lifetime: In Live, a volume belongs to the space and is selected by name. Every workflow in the space that declares the same name mounts the same committed files. Draft branches have isolated files for that name. `scope=run` gives one workflow run its own volume; every step in that run that declares the same name with `scope=run` mounts it.
 2. Access: `:ro` mounts the volume read-only. A mount is writable when `:ro` is absent.
 3. Writer scheduling: Writable mounts allow overlapping writers unless they declare `concurrency=exclusive`.
@@ -92,7 +94,7 @@ Use exclusive writes for logical read-modify-write state.
 VOLUME ["state:concurrency=exclusive"]
 ```
 
-Choose exclusive writes for counters, cursors, ledgers, sessions, single append files, package caches, lock files, journals, one database path that many runs update, one JSON file that many runs update, and any state where overlapping writers could touch the same file group.
+Choose exclusive writes for counters, cursors, ledgers, single append files, package caches, lock files, journals, one database path that many runs update, one JSON file that many runs update, and any state where overlapping writers could touch the same file group.
 
 Any multi-file state that must stay consistent should be treated as one logical file group. That includes databases with sidecars, package stores, journals, indexes, and similar state. Writers may run concurrently when each owns a directory. If multiple writers update the same group, use one exclusive writer with read-only readers.
 
