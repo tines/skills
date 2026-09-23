@@ -4,6 +4,8 @@ Run every changed step with representative input before committing or publishing
 
 If a run fails, inspect that execution’s full logs, fix the cause, and rerun it. For downstream steps, use a real upstream output when possible. Use custom input only when the scenario needs data that the last upstream execution does not provide.
 
+When generating route URLs, check that links and callbacks to sibling routes preserve the current draft and use the current space’s origin. Exercise URL construction with synthetic `_3B_WORKFLOW_BASE_URL` values for Live, a draft, and another space; include origin-relative paths when used. These checks need no external requests.
+
 ## Step tests
 
 A step test stores one successful run’s input and expected output under `<Step>/tests/step-tests/`. Replays are hermetic, have no network egress, and compare output byte-for-byte except for trailing newlines. HTTP tests compare the complete response. Add tests only for deterministic behavior: do not capture output that depends on live data, the wall clock, or an unreplayable external effect.
