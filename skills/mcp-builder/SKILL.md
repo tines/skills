@@ -87,6 +87,21 @@ Challenges expire after ten minutes and 3B forces `Cache-Control: no-store` and 
 
 This is the auth model for the MCP server _itself_. It is separate from how your tools authenticate to the external service they wrap (Phase 1) — that still uses the service’s own credentials.
 
+### When the caller hasn’t connected their own account
+
+When a tool calls a service through a connector in visitor mode, the connector uses the caller’s own account, which the consent screen normally collects before the first tool call. If the caller has no usable grant for the route’s space (they revoked it, it failed to refresh, or consent was skipped), 3B answers the tool’s outbound request itself with `403` and this JSON body instead of forwarding it:
+
+```json
+{
+  "error": "connector_not_connected",
+  "connector": "slack",
+  "message": "The caller hasn’t connected their own slack account for this space. Open connect_url in a browser to connect, then retry.",
+  "connect_url": "https://…/connectors/grant/connect?app=…&space=…&user=…"
+}
+```
+
+Return `message` and `connect_url` verbatim as the tool result with `isError: true`, so the client shows the caller a link to connect and retry. Do not retry the request, treat it as a provider outage, or persist the link: it is a session-gated page for the signed-in caller, not a credential. A body without `connect_url` means the run had no caller identity to connect an account for, which happens on routes without authentication.
+
 ## Phase 3 — Review and test
 
 Review for DRY code, consistent error handling, full type coverage, and clear tool descriptions. Build (`npm run build` / `python -m py_compile`), then exercise the server interactively with the MCP Inspector (`npx @modelcontextprotocol/inspector`).
