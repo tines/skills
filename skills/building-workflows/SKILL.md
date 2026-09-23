@@ -113,13 +113,26 @@ A route accepting OAuth clients should render its own consent screen: when a cli
 
 When adding or changing a route, tell the user who can access it. Do not describe a route as public when draft access is still floored to space membership.
 
-When code embeds one of its workflow’s own route URLs, prefix the path with `/__3b/branch/${process.env._3B_BRANCH_ID}` on a draft. Use the plain path when `_3B_BRANCH_ID` is empty. Never persist a branch ID in source.
-
 Cookies are pinned to the serving host. 3B strips `Domain`, changes `SameSite=None` to `SameSite=Lax`, signs `HttpOnly` values for the space, and forces `Secure` on HTTPS responses. Prefer `__Host-` cookie names with `Path=/`, `Secure`, and `HttpOnly`; omit `HttpOnly` only when browser JavaScript must read the cookie.
 
 Keep APIs synchronous only for short, bounded work. For long or variable work, promptly return `202 Accepted` with a durable operation ID and status URL, then continue downstream. Because that HTTP response becomes downstream stdin, include the operation ID and required job payload in its body and parse the HTTP message in the next step. Persist pending, succeeded, and failed state in a named volume, and make retries idempotent. An empty automatic `202` is only for fire-and-forget work; use `201 Created` only when the requested resource has been created before responding.
 
 Stream when incremental output is useful, but streaming and keepalives are not durable. When completion matters, persist progress and provide a status or resume path; client and proxy timeouts, network interruptions, and deployment draining may end the request before the step’s `timeout`.
+
+### Route URLs
+
+Construct URLs for the workflow’s own routes from `_3B_WORKFLOW_BASE_URL` at runtime. It contains the space’s public origin plus the draft branch prefix, with no trailing slash; in Live it is just the origin. It is available without HTTP input, including in scheduled runs.
+
+```ts
+const callbackUrl = `${process.env._3B_WORKFLOW_BASE_URL}/my-app/callback`;
+const callbackPath = new URL(callbackUrl).pathname;
+```
+
+Use absolute URLs for external callbacks and origin-relative paths for browser links, forms, redirects, and fetches that should stay on the serving host. Append the configured route directly: adding another branch prefix duplicates it, and `new URL("/my-app/callback", baseUrl)` discards it.
+
+Read runtime variables in step code, not browser code or build scripts. For React, construct URLs in `render.ts` and serialize them into the page for the browser bundle. `window.__ROUTE_PATH__` includes the current page’s route; use it as the router basename, not as a base for sibling routes. The HTTP request on stdin has its draft prefix stripped.
+
+Do not hardcode deployment hostnames or IDs into the workflow’s own URLs. External callback registrations and client configuration must use the destination route’s URL after import.
 
 ## Other runtime contracts
 
