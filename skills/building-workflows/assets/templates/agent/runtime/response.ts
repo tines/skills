@@ -11,8 +11,15 @@ export type ResponseStream = {
 // trail lives in the transcript, not the pipe.
 export function startResponse(interactive: boolean): ResponseStream {
   if (interactive) {
+    const heartbeat = setInterval(() => {
+      process.stdout.write('{"type":"heartbeat"}\n');
+    }, 15_000);
+    heartbeat.unref();
     return {
-      event: (event) => process.stdout.write(`${JSON.stringify(event)}\n`),
+      event: (event) => {
+        if (event.type === "done") clearInterval(heartbeat);
+        process.stdout.write(`${JSON.stringify(event)}\n`);
+      },
     };
   }
   let conversation: { conversationId: string; owner?: string } | undefined;
