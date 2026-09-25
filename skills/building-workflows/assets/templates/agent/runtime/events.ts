@@ -8,6 +8,7 @@ import type { UsageTotals } from "./transcript";
 export type AgentEvent =
   | { type: "conversation"; conversationId: string; owner?: string }
   | { type: "user-message"; text: string }
+  | { type: "heartbeat" }
   | { type: "text-delta"; text: string }
   | { type: "reasoning-delta"; text: string }
   | { type: "tool-call"; toolCallId: string; toolName: string; input: unknown }
