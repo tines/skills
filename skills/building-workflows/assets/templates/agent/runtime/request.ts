@@ -24,12 +24,25 @@ export function requestBodyOrRaw(raw: string): string {
 // controls. Read it off the raw request before the headers are dropped; null for
 // an unauthenticated route or a headless run (an upstream step's raw output).
 export function authenticatedPrincipal(raw: string): string | null {
+  return authenticatedHeader(raw, "x-3b-authenticated-email");
+}
+
+// The caller's verified group names: the IdP snapshot for SSO callers, current
+// 3B groups for members. The platform injects them as a JSON array and omits the
+// header when there are none, so an empty list means no verified groups.
+export function authenticatedGroups(raw: string): string[] {
+  const value = authenticatedHeader(raw, "x-3b-authenticated-groups");
+  return value ? JSON.parse(value) : [];
+}
+
+function authenticatedHeader(raw: string, name: string): string | null {
   if (!REQUEST_LINE.test(raw)) return null;
   const sep = raw.match(/\r?\n\r?\n/);
   const head = sep ? raw.slice(0, sep.index!) : raw;
   for (const line of head.split(/\r?\n/)) {
-    const match = line.match(/^x-3b-authenticated-email:\s*(.+)$/i);
-    if (match) return match[1].trim();
+    if (!line.toLowerCase().startsWith(`${name}:`)) continue;
+    const value = line.slice(name.length + 1).trim();
+    return value || null;
   }
   return null;
 }
