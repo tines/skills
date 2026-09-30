@@ -33,9 +33,7 @@ Use a volume when code needs filesystem behavior, many related files, random acc
 
 ## Capacity and data shape
 
-The limit applies to the total logical bytes of files in one volume, not to each file. A step can write in its private view, but publishing growth beyond the limit fails when the step finishes. Estimate retained bytes from item size, expected item count, and retention period. Include source files, derived files, indexes, and database sidecars that remain at publication. Leave room for normal updates.
-
-Use the current deployment’s per-volume limit supplied in the in-product agent context. The standard limits are 100,000,000 bytes on free multitenant, 1,000,000,000 bytes on paid multitenant, and 2,000,000,000 bytes on paid dedicated. These are decimal MB and GB, not MiB and GiB. Workflow steps do not receive the limit as an environment variable. In other authoring interfaces, establish the deployment limit if expected data could approach it.
+Each deployment sets a per-volume limit on the total logical bytes of files. If the value is unavailable and expected data could approach it, establish it before deciding what to retain. A step can write in its private view, but publishing growth beyond the limit fails when the step finishes. Estimate retained bytes from item size, expected item count, and retention period. Include source files, derived files, indexes, and database sidecars that remain at publication. Leave room for normal updates.
 
 Start with what the workflow needs to retain and how it will be read. When the source supports it, inspect metadata first, filter or query there, and fetch only the files needed for the result. Use pagination, change feeds, or range reads to retrieve data incrementally. Process a large input as a stream or batches when the result does not require a full local copy. If the full collection is required, plan incremental ingestion, retention, and recovery from interruption. Do not download everything into a volume and wait for a size failure. Do not silently discard, sample, or degrade required data to meet the quota; explain a real capacity mismatch and choose a design that preserves the requested behavior.
 
@@ -49,7 +47,7 @@ More volumes help when data has a clear, bounded ownership boundary or a stable 
 
 ## Lifetime
 
-Use `VOLUME ["state"]` when files should survive and be visible to later Live workflow runs. In Live, the volume belongs to the space, and any workflow in that space mounts the same files by declaring `state`. Declaring the name is the complete sharing mechanism. Draft branches have isolated files for the same name, and draft volume data is discarded rather than promoted to Live.
+Use `VOLUME ["state"]` when files should survive and be visible to later Live workflow runs. In Live, the volume belongs to the space, and any workflow in that space mounts the same files by declaring `state`. Declaring the name is the complete sharing mechanism. Draft branches have isolated files for the same name and start empty. When Live already holds data for a volume this workflow uses, follow the workflow context before editing or running anything: by default, ask the user (`askQuestion`) whether to start empty or carry Live’s data forward, offering to make either the workflow’s standing choice, and record the answer with `seedBranchStorage`. The user can change that choice under “Draft storage” in the workflow menu, and can copy Live’s data in from the storage browser. Draft volume data is discarded when the draft is pushed live unless the user chooses to seed a Live volume that has no data yet with it during the push.
 
 ```Dockerfile
 VOLUME ["state"]
