@@ -15,11 +15,13 @@ For the visual identity — type, palette, spacing, and polish — use the **fro
 
 ## Data pipeline
 
-- Refresh on a schedule, and let users trigger a refresh on demand — debounce/lock it so concurrent loads don't stampede the source. Put the schedule on one entry point that fans out to the fetchers, so cadence lives in one place.
+If the dashboard stores source data or derived views in named volumes, use `workflow-volume-design` for file ownership, bounded updates, retention, and capacity.
+
+- Refresh on a schedule, and let users trigger a refresh on demand. Coalesce concurrent refreshes so they do not stampede the source. Put the schedule on one entry point that fans out to the fetchers, so cadence lives in one place.
 - Fetch incrementally: pull only what's new since the last stored point, but keep a full-backfill path for a cold or empty store.
 - Retry transient source failures with backoff, and never overwrite good data with an empty or failed result — a bad fetch leaves the last good data in place.
-- Store raw source data under a stable schema and derive everything at read time, so display changes don't force a re-fetch. Store the inputs to a transform, not its output — keep the mapping (e.g. a lookup table) and apply it live, rather than baking mapped values into storage. Keep enough history to backfill or re-derive when the source or your schema changes.
-- Aggregate on the fly, but when the raw volume is too large to load and roll up per request, push the aggregation to the source API (query it for pre-summarized data) or precompute rollups on fetch.
+- Store raw source data under a stable schema so display changes don’t force a re-fetch. Keep the inputs to a transform, such as a lookup table, so derived views can be rebuilt when mappings change. Retain only the history the product needs.
+- Aggregate on the fly only while the query remains bounded. When the raw volume is too large to load and roll up per request, query pre-summarized data at the source or precompute bounded rollups during refresh.
 - Let users download the data (e.g. CSV): the processed rows behind the current view (respecting active filters, for finance/reporting) and/or the raw records (for their own analysis).
 
 ## Everything is a filter, selection is shared

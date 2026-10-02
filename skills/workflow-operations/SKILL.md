@@ -15,4 +15,6 @@ Add operating behavior from the workflow’s real reliability requirements:
 - Log stable identifiers and decisions needed to trace a run without recording secrets or redundant payloads.
 - Build follow-on automation as another composable workflow when it has an independent trigger, owner, or lifecycle.
 
+For scheduled work on named volumes, use `workflow-volume-design`. Keep each run bounded, prevent overlapping updates to the same files, and verify that pending work drains faster than it arrives. A completed run alone does not establish that the schedule is keeping up.
+
 Run the workflow with representative input after changing its operating behavior.
