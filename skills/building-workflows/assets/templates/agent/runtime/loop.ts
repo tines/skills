@@ -1,4 +1,5 @@
-import { type ModelMessage, stepCountIs, streamText, type ToolSet } from "ai";
+import { type ModelMessage, stepCountIs, streamText, type Tool } from "ai";
+import { z } from "zod";
 import { readAgentConfig } from "./config";
 import { resolveModel } from "./model";
 import type { ResponseStream } from "./response";
@@ -48,7 +49,15 @@ export async function runAgent({
   }
   const { model, providerOptions, prepareTools, prepareMessages } =
     await resolveModel(modelConfig);
-  const tools: ToolSet = prepareTools(await loadTools());
+  const tools = Object.fromEntries(
+    Object.entries(prepareTools(await loadTools())).map(([name, tool]) => [
+      name,
+      {
+        ...tool,
+        contextSchema: tool.contextSchema ?? z.object({ value: z.unknown() }),
+      },
+    ])
+  ) as Record<string, Tool<unknown, unknown, { value: unknown }>>;
 
   // A null message is a self-loop continuation: the transcript already ends
   // with the pending tool results, so the model picks up mid-task with no new
@@ -71,7 +80,7 @@ export async function runAgent({
 
   const result = streamText({
     model,
-    system,
+    instructions: system,
     messages,
     tools,
     providerOptions,
@@ -80,7 +89,9 @@ export async function runAgent({
     // exactly one model request and relies on the self-loop to continue.
     stopWhen: stepCountIs(interactive ? remainingSteps : 1),
     abortSignal: controller.signal,
-    experimental_context: context,
+    toolsContext: Object.fromEntries(
+      Object.keys(tools).map((name) => [name, { value: context }])
+    ),
     onError: () => {},
   });
 

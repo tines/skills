@@ -1,5 +1,5 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
-import type { SharedV3ProviderOptions } from "@ai-sdk/provider";
+import type { SharedV4ProviderOptions } from "@ai-sdk/provider";
 import type { LanguageModel, ModelMessage, ToolSet } from "ai";
 import type { ModelConfig, ThinkingConfig } from "./config";
 import {
@@ -13,7 +13,7 @@ import {
 // stream with, and optional tool/message massaging.
 export type ResolvedModel = {
   model: LanguageModel;
-  providerOptions: SharedV3ProviderOptions;
+  providerOptions: SharedV4ProviderOptions;
   prepareTools: <T extends ToolSet>(tools: T) => T;
   prepareMessages: (messages: ModelMessage[]) => void;
 };
@@ -63,7 +63,7 @@ function providerOptions(
   model: string,
   effort: EffortLevel | null,
   thinking: ThinkingConfig
-): SharedV3ProviderOptions {
+): SharedV4ProviderOptions {
   // Reasoning effort only applies while thinking is on; the provider rejects it
   // alongside disabled thinking.
   const level =
