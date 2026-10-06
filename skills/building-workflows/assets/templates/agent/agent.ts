@@ -18,7 +18,7 @@ import { transcriptPath } from "./runtime/transcript";
 // the workflow. `body` is the raw trigger payload: the upstream step's stdout,
 // or a routed agent's request body (the HTTP framing and auth headers are
 // already stripped). Return the message the agent acts on, an optional context
-// handed to every tool's execute as `options.experimental_context`, and — for a
+// handed to every tool’s execute as `options.context.value`, and — for a
 // chat route whose callers continue threads — the conversationId to resume
 // (omit it to start a fresh thread).
 function buildInput(body: string): {

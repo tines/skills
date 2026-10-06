@@ -1,157 +1,77 @@
 ---
 name: workflow-volume-design
-description: Design reliable 3B workflows that use named volumes or filesystem state. Use this whenever a workflow stores files, shares files between steps, persists state across runs, uses SQLite or cache files, handles uploads or generated artifacts, receives many concurrent inputs, runs parallel workers, builds reporting data, or needs temporary per-run files, even if the user does not mention volumes, scope, concurrency, exclusive writers, or filesystems.
+description: Design reliable 3B workflows that use named volumes or filesystem state. Use whenever a workflow stores or shares files, persists state across runs, uses an embedded database, handles uploads, receives concurrent requests, builds reporting data, or needs temporary per-run files.
 license: Apache-2.0
 compatibility: Tines 3B
 ---
 
-Use this skill before creating or changing steps that use named volumes or filesystem-backed state.
+# Design workflows with volumes
 
-Users usually describe the product they want, not the storage primitive. Infer the volume shape and file format from the workflow’s data lifetime, write pattern, read pattern, and correctness needs. Choose the storage implementation yourself. Do not ask users to choose a database, file format, `scope`, `concurrency`, exclusive writers, branch state, or volume names. Ask product questions only when the answer changes the design.
+Use this skill before creating or changing steps that use named volumes or filesystem-backed state. Discover the workflow tools available in the current interface. For an existing workflow, inspect its step graph, source, volume declarations, schedules, recent runs, and volume usage before changing the design. Separate measurements from assumptions.
 
-Good questions are:
-
-1. Should this data still be there for later Live runs, or only for this workflow run?
-2. Can each delivery, job, customer, worker, or batch own its own folder, or does everyone need to update the same shared record?
-3. Does any report, index, counter, or summary need to update immediately, or is a short delay acceptable?
-
-Use user-facing names for steps, such as "Receive input", "Store files", "Generate artifacts", "Update reports", and "Read dashboard data". Explain persistence, concurrency, and conflict behavior in product terms. Translate independent product ownership into unique directories, and translate shared records into one writer path. Mention `scope`, `concurrency`, and exclusive writers only when the user is technical or the distinction changes behavior they asked about.
+Users describe the behavior they need, not a storage primitive. Choose file layouts, database formats, volume names, and mount options yourself. Ask only product questions that change the design, such as whether data must survive later Live runs, how fresh an answer must be, or how long records must be retained. Explain the resulting behavior in product terms.
 
 ## Core model
 
-A volume is a named POSIX directory mounted at `/storage/<name>`. A step can open, read, write, rename, delete, and list files there just like a local filesystem. The name selects the storage; options on the `VOLUME` declaration independently control lifetime, access, and writer scheduling.
+A volume is a named POSIX directory mounted at `/storage/<name>`. In Live, every workflow in a space that declares the same name mounts the same committed files. Draft branches have isolated files. `scope=run` gives one workflow run its own volume, shared by steps in that run that declare the same name and scope. A `:ro` mount is read-only.
 
-Follow the [secret-storage prohibition and cleanup guidance](../building-workflows/SKILL.md#volumes) when choosing what to persist.
+Writable mounts do not serialize executions. Two runs of the same step, different steps, or different Live workflows in the same space can write the same named volume at the same time. Run-scoped volumes are shared only by steps in one run, so separate runs do not write the same run-scoped volume.
 
-1. Lifetime: In Live, a volume belongs to the space and is selected by name. Every workflow in the space that declares the same name mounts the same committed files. Draft branches have isolated files for that name. `scope=run` gives one workflow run its own volume; every step in that run that declares the same name with `scope=run` mounts it.
-2. Access: `:ro` mounts the volume read-only. A mount is writable when `:ro` is absent.
-3. Writer scheduling: Writable mounts allow overlapping writers unless they declare `concurrency=exclusive`.
+A step writes into a private view while it runs. Other steps see the last committed version, never its partial writes. A failed step discards its changes. A successful step publishes each volume separately, so files that must be committed together belong in one volume. Concurrent writers to different paths can both publish. Writers changing the same path can conflict. This does not make simultaneous updates to one embedded database safe.
 
-A step writes into a private view while it runs. Other steps see the last committed version, never half-written files. If the step’s code fails, its changes are discarded. After a successful step, each volume publishes separately. Keep files that must be saved together in one volume.
+Follow the [secret-storage prohibition](../building-workflows/SKILL.md#volumes). Use stdin and stdout for small handoffs between adjacent steps. Use volumes when steps need filesystem paths, many related files, random access, or data that survives a step.
 
-Use a volume when code needs filesystem behavior, many related files, random access, or a tool that expects paths. Use stdin and stdout for small handoffs between adjacent steps, such as a request body, JSON payload, or primary result.
+## Shape the request path
 
-## Capacity and data shape
+Design the common request around the answer its caller needs. When possible, one entry step validates the request, reads only that subject’s current view, writes any necessary update to a unique path, and responds. Mount only the volumes it uses. A direct response should not also start downstream steps that merely decide there is no work. Keep connector calls, large scans, aggregation, and database updates off a frequent request path when the product permits a short delay.
 
-Each deployment sets a per-volume limit on the total logical bytes of files. If the value is unavailable and expected data could approach it, establish it before deciding what to retain. A step can write in its private view, but publishing growth beyond the limit fails when the step finishes. Estimate retained bytes from item size, expected item count, and retention period. Include source files, derived files, indexes, and database sidecars that remain at publication. Leave room for normal updates.
+For concurrent requests, give each delivery, device, customer, or job a distinct record path. Use stable subject keys for direct lookups, unique IDs for new immutable records, and idempotency keys that survive retries. Do not append from many runs to one shared file or update one shared embedded database from request steps. A small read-only file per subject often suffices for point lookups. Use an embedded database when its queries or transactions justify it. Keep lookup work proportional to the subject being requested, not to all retained records.
 
-Start with what the workflow needs to retain and how it will be read. When the source supports it, inspect metadata first, filter or query there, and fetch only the files needed for the result. Use pagination, change feeds, or range reads to retrieve data incrementally. Process a large input as a stream or batches when the result does not require a full local copy. If the full collection is required, plan incremental ingestion, retention, and recovery from interruption. Do not download everything into a volume and wait for a size failure. Do not silently discard, sample, or degrade required data to meet the quota; explain a real capacity mismatch and choose a design that preserves the requested behavior.
+```text
+request → validate → read views/<subject-id>.json
+                   → write pending/<bucket>/<unique-id>.json → respond
 
-Volumes are POSIX filesystems, so steps can use the file formats and embedded databases their tools support. Choose a representation for the required reads, updates, and queries. These are examples, not prescribed choices:
-
-- Plain files suit independent records and direct path access. Give each owner a stable directory and avoid a shared mutable index unless readers need one.
-- SQLite suits mutable keyed records, transactions, indexes, and point lookups. Keep the database and its sidecars in one volume.
-- DuckDB suits batch analysis and aggregations over tabular data. Use it when those queries justify a local analytical store, and account for its database and working files.
-
-More volumes help when data has a clear, bounded ownership boundary or a stable shard key. Declare the required names, route writes and reads by the same key, and account for the space’s volume-count limit. Splitting one logical database or file group across volumes does not solve its consistency needs. Prefer a remote query or object source when the workflow only needs selected data and the source can serve it reliably.
-
-## Lifetime
-
-Use `VOLUME ["state"]` when files should survive and be visible to later Live workflow runs. In Live, the volume belongs to the space, and any workflow in that space mounts the same files by declaring `state`. Declaring the name is the complete sharing mechanism. Draft branches have isolated files for the same name and start empty. When Live already holds data for a volume this workflow uses, follow the workflow context before editing or running anything: by default, ask the user (`askQuestion`) whether to start empty or carry Live’s data forward, offering to make either the workflow’s standing choice, and record the answer with `seedBranchStorage`. The user can change that choice under “Draft storage” in the workflow menu, and can copy Live’s data in from the storage browser. Draft volume data is discarded when the draft is pushed live unless the user chooses to seed a Live volume that has no data yet with it during the push.
-
-```Dockerfile
-VOLUME ["state"]
-VOLUME ["state:ro"]
+scheduled work → apply bounded pending batch → refresh affected views → clean up applied input
 ```
 
-Volumes that persist across Live runs are good for uploads, durable reports, dashboards, cache entries, cursors, logs users need later, app state, and generated artifacts that future Live runs should reuse.
+Only create downstream executions for work that must follow this request. A scheduled or otherwise low-concurrency step can update derived state separately when a brief delay is acceptable. Preserve the required authentication, response signing, freshness, and failure behavior. If the caller needs an immediate result that cannot be computed from current and pending state, keep the necessary work on its response path.
 
-Use run scope when files are only useful inside one workflow run.
+## Give shared state an owner
 
-```Dockerfile
-VOLUME ["work:scope=run"]
-VOLUME ["work:scope=run,ro"]
-```
-
-Use `scope=run` for temporary downloads, extracted archives, intermediate files, temporary databases, and handoff between steps when future Live runs do not need the files. Parallel steps in the run can share it when they write distinct paths.
-
-Every step that needs the same run-scoped store must declare `scope=run`. To read run-scoped `work`, declare `VOLUME ["work:scope=run,ro"]`; `VOLUME ["work:ro"]` reads the `work` volume that persists across runs.
-
-Scope answers how long and where the data lives. It does not decide whether writers can overlap. `scope=run` is about lifetime, not automatically about “more concurrency”.
-
-## Access
-
-Use `:ro` for readers. Dashboards, report APIs, export steps, validators, and summarizers should use read-only mounts unless they actually publish files.
+Default to independent files under a writable volume. Runs writing distinct paths can overlap without serializing the whole step. Use read-only mounts for steps that only read.
 
 ```Dockerfile
-VOLUME ["state:ro"]
-VOLUME ["work:scope=run,ro"]
-```
-
-Use writable mounts only in the smallest step that publishes changes.
-
-## Writer semantics
-
-Writable mounts use concurrent writer scheduling by default. Keep it when each run owns different files or directories, even if the runs execute the same step. Two spaces have different files for the same volume name.
-
-```Dockerfile
-VOLUME ["incoming_files"]
-```
-
-Concurrent writers can publish to the same volume. Changes to different paths survive. If they change the same files, one may fail when it tries to save. Give each delivery, customer, or job its own path when possible.
-
-Most workflows should not need `concurrency=exclusive`. First give each job its own files so jobs can run together. Use it only when jobs really must update the same shared files, such as one database and its companion files. A shared index, journal, package cache, counter, or cursor can have the same need. Keep files that must stay consistent in one volume. Concurrent writers do not make updates to one database safe.
-
-```Dockerfile
-VOLUME ["state:concurrency=exclusive"]
-```
-
-The exclusive mount stays locked for the whole step, including downloads, network calls, and model work. Do that work before the small writer step when possible. If workers need unique assignments, reserve each assignment in a short exclusive step and let the workers continue concurrently. `scope=run` changes lifetime, not this scheduling decision.
-
-## Common shapes
-
-For independent work, give each delivery, job, customer, or worker its own directory in a writable volume. Runs can write those directories concurrently.
-
-```Dockerfile
-# Receiver or worker
 VOLUME ["incoming"]
-
-# Importer, report updater, or dashboard
-VOLUME ["incoming:ro"]
+VOLUME ["views:ro"]
 ```
 
-The owner directory comes from the product domain. A delivery might own `/storage/incoming/<delivery-id>/`; a worker might own `/storage/artifacts/<worker-id>/`. Expensive workers can publish separate results concurrently. If readers can use those paths directly, no merge step is needed. Otherwise, a small updater can validate finished results and update a shared report or index. Apply the writer rule above if updater executions can change the same file group.
+If an embedded database, report, or index must be updated, give each mutable file group one scheduled or otherwise low-concurrency writer. This applies to SQLite, DuckDB, and similar file-backed databases. Request steps may query a published database in read-only mode, but should write independent pending records instead of changing it. Ensure writer runs cannot overlap on the same database files. A short timeout alone does not guarantee this when starts are late or retries occur. If one writer cannot keep up, partition by a stable key into independently owned files, or use a store built for concurrent updates. Avoid a volume-wide exclusive mount on frequent request steps. When the same files truly require serialized updates, limit any exclusive mount to a short writer step and complete connector, model, and other network work before it starts.
 
-Link the receiver to the updater when reports must update immediately; schedule the updater when a short delay is acceptable. Keep expensive work outside an exclusive writer when one is needed. A dashboard or API that only reads the result uses `:ro`.
+Keep a database and its sidecars together. If pending records, derived state, and affected views are in the same volume, one successful writer step can publish their changes together. If input and derived state are in different volumes, their publications are separate. Record an idempotency key with the durable derived update and confirm it in a later run before deleting the input. Recheck state when applying delayed work and preserve rejected work or its outcome when the product needs it.
 
-For a cache where missed or overwritten entries are acceptable, write entries as independent files under source-keyed or content-addressed paths.
+## Bound background work and storage
 
-```Dockerfile
-VOLUME ["cache"]
-```
+Move aggregation, database updates, view refreshes, and cleanup out of frequent entry steps when a short delay is acceptable. Give each run a fixed record and time budget, and prevent overlapping runs that update the same files. When a tick only triggers a scan of durable pending records, skip obsolete ticks instead of replaying them after a queue delay. Apply the bound before reading, parsing, or sorting a growing directory. Use direct paths or bounded time- or key-based buckets so selecting the next batch stays cheap. A schedule must drain sustained input faster than records arrive. Otherwise, its queue and volume usage grow even when each run succeeds.
 
-If cache correctness matters, treat it like shared mutable state and apply the writer rule above.
+Remove or compact applied files according to the required retention period. Keep necessary outcomes and idempotency information, but avoid retaining full payloads twice without a product need. Estimate retained logical bytes from input size, arrival rate, derived files, database sidecars, and retention time. Each deployment sets a per-volume logical-byte limit and a volume-count limit. Inspect the actual limits and usage when they may affect the design. A private write can succeed and still fail at publication when the volume exceeds its limit. Do not silently drop required data to fit.
 
-## Anti-patterns
+For source data, inspect metadata and filter before downloading when possible. Fetch only needed files, and use pagination, change feeds, ranges, streams, or batches for larger inputs. If the complete collection is required, plan ingestion, retention, and recovery from interruption rather than relying on one large download.
 
-Avoid routing every delivery through one exclusive writer when independent directories and later aggregation meet the product need.
+Check representative requests, duplicates, and sustained traffic. Inspect request latency, waiting executions, background run duration, oldest pending age, pending files and bytes, and volume usage. A successful scheduled run is not enough. Pending work must repeatedly drain under the expected arrival rate.
 
-Avoid a dashboard or report API with a writable mount when it only reads. Use `:ro`.
+## Lifetime and draft storage
 
-Avoid overlapping writes to the same database or index path under default concurrent scheduling.
+Use `VOLUME ["state"]` when files should survive and be visible to later Live runs. A read-only step declares `VOLUME ["state:ro"]`. Every workflow in the space that declares `state` shares its Live files.
 
-Avoid many writers appending to one file. Give each input, job, or worker its own directory and batch it later.
+Draft branches start with isolated files for the same name. When Live already holds data for a volume this workflow uses, follow the workflow context before editing or running anything: by default, ask the user with `askQuestion` whether to start empty or carry Live’s data forward, offer to make either the workflow’s standing choice, and record the answer with `seedBranchStorage`. Follow an existing standing choice without asking again. The user can change that choice under “Draft storage” in the workflow menu or copy Live’s data from the storage browser. Draft files are discarded when the draft is pushed live unless the user chooses to seed a Live volume that has no data yet.
 
-Avoid one volume called `state` for unrelated cursors, caches, uploaded files, and reports. Separate them when their ownership, lifetime, or update patterns differ so one writer does not block unrelated work.
+Use `VOLUME ["work:scope=run"]` for files needed only within one workflow run. A reader declares `VOLUME ["work:scope=run,ro"]`. Every step sharing that run-scoped volume must declare `scope=run`. `VOLUME ["work:ro"]` names a different, persistent volume. Scope changes lifetime, not whether writers overlap within a run.
 
-Avoid asking “Should this be durable or run-scoped?” Ask what should happen to the data.
+## Other useful shapes
 
-## Implementation notes
+- Independent uploads, generated artifacts, and cache entries can use one directory per job or source key. Readers can use those paths directly when no cross-job query is needed.
+- SQLite suits indexed mutable state with one writer per database file. DuckDB suits batch analysis over tabular data. Other embedded databases can also work when their read and write behavior fits the workflow. Keep each database and its working files under one writer, and use a remote source when it can answer the required query without a local copy.
+- Separate volumes when ownership, lifetime, or retention differs. Do not split files that require one atomic publication across volumes. More volumes and mounts also add work to every step that uses them.
+- Read-only APIs and dashboards should mount read-only views. If a shared summary is needed, a bounded writer can update it from completed records.
 
-For TypeScript steps that write into an owned directory:
-
-```typescript
-import { mkdir } from "node:fs/promises";
-
-const id = crypto.randomUUID();
-const day = new Date().toISOString().slice(0, 10);
-const ownerDir = `/storage/incoming_files/${day}/${id}`;
-const path = `${ownerDir}/payload.json`;
-
-await mkdir(ownerDir, { recursive: true });
-await Bun.write(path, JSON.stringify(record) + "\n");
-```
-
-For steps that import independent directories into a database, report, or index, make the import idempotent. Track processed directory names in the derived state so rerunning after a failure does not double-count inputs.
-
-When explaining the finished workflow, describe the product behavior. “The receiver accepts bursts quickly, and the reporting step batches new files into dashboard data.” Mention database or volume details only when the user asks or they affect the product’s behavior.
+When explaining the finished workflow, describe what the caller sees and when background work becomes visible. Mention storage details only when they affect the product’s behavior or the user asks.

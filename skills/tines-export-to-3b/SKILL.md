@@ -9,6 +9,8 @@ compatibility: Tines 3B
 
 You'll be handed a Tines story as a JSON export and asked to rebuild it in 3B. This guide tells you, for each Tines piece, what to build in 3B and how. Treat it as a starting map, not gospel: some mappings are unproven, so when something looks ambiguous (especially formulas, dates, and type coercion), flag it rather than guessing silently.
 
+When a mapping uses a named volume for a queue, join, deduplication, delayed work, or retained files, use `workflow-volume-design` before choosing its file layout and schedule.
+
 ## Flag these up front (not portable / needs human input)
 
 - **5-minute (300s) per-step execution ceiling** — there's no way today to run a step longer than that, so long running steps or delays need to be considered up front and broken up (durable state in a volume + cron continuation).
