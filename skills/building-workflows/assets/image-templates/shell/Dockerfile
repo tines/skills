@@ -1,6 +1,6 @@
 FROM debian:13-slim
 
 WORKDIR /app
-COPY . .
+COPY --link . .
 
 CMD ["sh", "./script.sh"]

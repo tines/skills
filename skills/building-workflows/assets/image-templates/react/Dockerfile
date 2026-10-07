@@ -1,10 +1,10 @@
 FROM oven/bun:1.4.2
 
 WORKDIR /app
-COPY . .
-RUN --mount=type=cache,target=/root/.bun/install/cache \
-  bun install && \
-  bun build ./mount.tsx --minify --target=browser --define 'process.env.NODE_ENV="production"' --outfile ./bundle.js && \
-  bunx --bun @tailwindcss/cli@4.2.2 -i ./globals.css -o ./output.css --minify
+COPY package.json bun.lock* ./
+RUN --mount=type=cache,target=/root/.bun/install/cache bun install
+COPY --link . .
+RUN bun build ./mount.tsx --minify --target=browser --define 'process.env.NODE_ENV="production"' --outfile ./bundle.js && \
+  bun run --bun tailwindcss -i ./globals.css -o ./output.css --minify
 
 CMD ["bun", "./render.ts"]

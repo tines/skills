@@ -15,8 +15,8 @@ function errorMessage(error: unknown): string {
 
 // Kept structural so tests can drive it with a hand-rolled stream.
 type AgentStream = {
-  fullStream: AsyncIterable<TextStreamPart<ToolSet>>;
-  response: Promise<{ messages: ModelMessage[] }>;
+  stream: AsyncIterable<TextStreamPart<ToolSet>>;
+  response: PromiseLike<{ messages: ModelMessage[] }>;
 };
 
 // A token-budget or wall-clock abort is a normal termination, so this must
@@ -66,7 +66,7 @@ export async function streamResponse({
   };
 
   try {
-    for await (const event of stream.fullStream) {
+    for await (const event of stream.stream) {
       switch (event.type) {
         case "text-delta":
           finalText += event.text;
@@ -128,7 +128,7 @@ export async function streamResponse({
 
   // On the abort path `response` can reject, so swallow it and persist what we
   // have rather than drop the write and the `done` event entirely.
-  const response = await stream.response.catch(() => null);
+  const response = await Promise.resolve(stream.response).catch(() => null);
   await appendRecords(transcriptFile, [
     ...(userMessage && !contextLimitError
       ? [{ kind: "message", at: startedAt, message: userMessage } as const]
