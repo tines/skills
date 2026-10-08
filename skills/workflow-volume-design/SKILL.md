@@ -63,7 +63,7 @@ Check representative requests, duplicates, and sustained traffic. Inspect reques
 
 Use `VOLUME ["state"]` when files should survive and be visible to later Live runs. A read-only step declares `VOLUME ["state:ro"]`. Every workflow in the space that declares `state` shares its Live files.
 
-Draft branches start with isolated files for the same name. When Live already holds data for a volume this workflow uses, follow the workflow context before editing or running anything: by default, ask the user with `askQuestion` whether to start empty or carry Live’s data forward, offer to make either the workflow’s standing choice, and record the answer with `seedBranchStorage`. Follow an existing standing choice without asking again. The user can change that choice under “Draft storage” in the workflow menu or copy Live’s data from the storage browser. Draft files are discarded when the draft is pushed live unless the user chooses to seed a Live volume that has no data yet.
+Draft branches start with isolated files for the same name. Whether a draft starts empty or carries data forward is decided per draft; when the workflow context describes that decision as pending, follow its instructions before running any step that mounts the volume. Draft files are discarded when the draft is pushed live.
 
 Use `VOLUME ["work:scope=run"]` for files needed only within one workflow run. A reader declares `VOLUME ["work:scope=run,ro"]`. Every step sharing that run-scoped volume must declare `scope=run`. `VOLUME ["work:ro"]` names a different, persistent volume. Scope changes lifetime, not whether writers overlap within a run.
 
