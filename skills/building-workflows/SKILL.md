@@ -68,7 +68,7 @@ pinned = true
 
 - Colors: `pink`, `purple`, `teal`, `green`, `orange`, `red`, or `sky`.
 - `output`: makes stdout the HTTP response.
-- `route`: assigns an HTTP path. Live routes must be unique among workflows that share a public host. `/` is that host’s catch-all and should be used only for an explicitly requested homepage.
+- `route`: assigns an HTTP path. Live routes must be unique among workflows that share an edge host. `/` is that host’s catch-all and should be used only for an explicitly requested homepage.
 - `route_auth`: defaults to `space`.
 - `route_type`: exposes the route on the Links page as `webpage`, `api`, `webhook`, or `other`.
 - `title`: names a route exposed on the Links page; set it whenever `route_type` is present.
@@ -129,7 +129,7 @@ Stream when incremental output is useful, but streaming and keepalives are not d
 
 ### Route URLs
 
-Construct URLs for the workflow’s own routes from `_3B_WORKFLOW_BASE_URL` at runtime. It contains the space’s public origin plus the draft branch prefix, with no trailing slash; in Live it is just the origin. It is available without HTTP input, including in scheduled runs.
+Construct URLs for the workflow’s own routes from `_3B_WORKFLOW_BASE_URL` at runtime. It contains the space’s edge origin plus the draft branch prefix, with no trailing slash; in Live it is just the origin. It is available without HTTP input, including in scheduled runs.
 
 ```ts
 const callbackUrl = `${process.env._3B_WORKFLOW_BASE_URL}/my-app/callback`;
@@ -152,7 +152,9 @@ Each running step is limited to 1 vCPU, 2 GiB of memory with no swap, and 25,000
 
 Use connectors whenever a step or build-time investigation needs authenticated access to another service. When the workflow depends on the service at runtime, write ordinary requests without `Authorization` headers, API keys, or credential placeholders, then attach the connector to that step through the current interface’s connector tooling. When the service is only a build aid, connect it to the chat or execution context if the interface supports that, and do not modify a step. Prefer an exact literal target URL, including the scheme, hostname, and representative path, when known; otherwise search by service name. Follow only the environment variables and usage notes returned by the connector’s AI context. A connector in visitor mode uses the caller’s own account, and when the caller has none connected 3B answers the request with `403` and a `connector_not_connected` JSON body carrying a `connect_url`; surface that link to the caller instead of failing (the mcp-builder skill documents the body).
 
-Never ask a user to paste a key, token, password, username, or other credential into chat. If a credential appears anyway, do not put it in files or commands; use a connector and tell the user to rotate the exposed credential. Disconnect with connector tooling rather than editing `config.toml`.
+For SSO-only visitors, an app can disconnect the current visitor’s authorization with a same-origin POST to `/__3b/connectors/grant/disconnect?app=<connector-id>&route=<published-input-route>` using their browser session; `204` means disconnected (including already disconnected), and `401` means sign in again. Use the connector ID from connector tooling and the published input route that uses it, and explain before confirmation: “Disconnecting removes this account’s authorization for this connector across the apps in this space that use it.”
+
+Never ask a user to paste a key, token, password, username, or other credential into chat. If a credential appears anyway, do not put it in files or commands; use a connector and tell the user to rotate the exposed credential. To detach a connector from a step, use connector tooling rather than editing `config.toml`.
 
 If a connector cannot support the required authentication, explain the limitation. Do not build credential-entry forms or routes as a workaround: workflow request bodies are retained as execution inputs.
 
@@ -178,6 +180,6 @@ Volumes are named POSIX directories mounted below `/storage`. Names contain 1–
 - `VOLUME ["state"]` allows overlapping writers. Give concurrent runs distinct paths.
 - `VOLUME ["scratch:scope=run"]` gives one workflow run isolated writable storage shared by steps in that run.
 
-For any named volume or filesystem-backed state, use `workflow-volume-design` before choosing mounts or file layout. Keep frequent request steps to the files they need, give concurrent inputs unique paths, and move shared database updates and cleanup to bounded background work when the product allows it. In Live, a volume belongs to the space and is selected by name, so workflows in the same space share a named volume. Draft branches have isolated files that start empty and are discarded with the draft. If the workflow context says a draft’s stored data is not set up yet, follow the context’s instructions before running any step that mounts the volume. A step writes through a private view and publishes its changes only when it succeeds.
+For any named volume or filesystem-backed state, use `workflow-volume-design` before choosing mounts or file layout. Keep frequent request steps to the files they need, give concurrent inputs unique paths, and move shared database updates and cleanup to bounded background work when the product allows it. In Live, a volume belongs to the space and is selected by name, so workflows in the same space share a named volume. Draft branches have isolated files that start empty and are discarded with the draft. When live, or the branch a draft was forked from, already holds data for a volume the workflow uses, the workflow context says the draft’s stored data is not set up yet and tells you how to settle it with `seedBranchStorage`: start empty, copy live’s data, or copy the fork source’s data. Follow it before running any step that mounts the volume; the first run on undecided storage settles the draft on empty storage. The user can also reset a draft’s stored data from the storage browser, and when pushing live can seed live volumes that have no data yet from the draft. A step writes through a private view and publishes its changes only when it succeeds.
 
 Never store passwords, API keys, OAuth tokens, private keys, or reusable session credentials in volumes, even when the user requests it. File permissions, exclusive mounts, and calling a file “session state” do not make it a secret store. When replacing existing secret storage, tell the user to rotate exposed credentials and account for existing volume files and retained execution inputs; changing the code does not remove those copies.
