@@ -57,6 +57,15 @@ Skills can target different Tines products. Check each skill’s `compatibility`
 | [`internal-comms`](skills/internal-comms/)           | Write clear internal updates, reports, FAQs, and newsletters.                    |
 | [`status-update`](skills/status-update/)             | Draft evidence-based status updates from recent work.                            |
 
+### Create documents
+
+| Skill                  | Purpose                                                        |
+| ---------------------- | -------------------------------------------------------------- |
+| [`docx`](skills/docx/) | Create, edit, comment on, and read Word documents.             |
+| [`pdf`](skills/pdf/)   | Read, create, fill, merge, split, and watermark PDFs.          |
+| [`pptx`](skills/pptx/) | Create, edit, and read PowerPoint presentations.               |
+| [`xlsx`](skills/xlsx/) | Create, edit, analyze, and read Excel spreadsheets and models. |
+
 ### Tines and agent development
 
 | Skill                                              | Purpose                                                    |
