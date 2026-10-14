@@ -35,6 +35,11 @@
       ]
     },
     {
+      "title": "Create documents",
+      "description": "Skills for creating, editing, and reading Word, PowerPoint, Excel, and PDF files.",
+      "skills": ["docx", "pdf", "pptx", "xlsx"]
+    },
+    {
       "title": "Tines and agent development",
       "description": "Skills for Tines products, model APIs, and Agent Skills development.",
       "skills": [

@@ -9,7 +9,7 @@ compatibility: Tines 3B
 
 An MCP server is a JSON-RPC 2.0 API behind a single HTTP endpoint. Talk to it with plain `fetch` from `execute` or a step, with the MCP connector attached — the platform injects authentication on matching requests, so never set Authorization headers yourself, and never print or store tokens.
 
-Read the body of every error response, as the helper below does. A `403` with `"error": "connector_not_connected"` means the user hasn’t connected their own account to a visitor-mode connector: show them the body’s `message`, and its `connect_url` as a link if present, then retry once they’ve connected. Any other 401 or 403 means the user needs to reconnect the connector; tell them so rather than attempting an auth flow yourself.
+Read the body of every error response, as the helper below does. A `403` with `"error": "connector_not_connected"` means the user hasn’t connected their own account to a visitor-mode connector: show them the body’s `message`, and its `connect_url` as a link if present, then retry once they’ve connected. A `403` whose body is a JSON-RPC error saying a tool “is not allowed by this connector” means the connector only allows the tools its message lists: don’t retry or reconnect, use an allowed tool or tell the user that a connector manager can allow this one. Any other 401 or 403 means the user needs to reconnect the connector; tell them so rather than attempting an auth flow yourself.
 
 ## Request basics
 
