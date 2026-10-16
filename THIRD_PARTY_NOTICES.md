@@ -6,6 +6,5 @@ The following skills are derivative works adapted from [Anthropic’s skills rep
 - `skills/internal-comms/SKILL.md`, from `skills/internal-comms`
 - `skills/mcp-builder/SKILL.md`, from `skills/mcp-builder`
 - `skills/skill-creator/SKILL.md`, from `skills/skill-creator`
-- `skills/webapp-testing/SKILL.md`, from `skills/webapp-testing`
 
 The remaining skill files are original Tines content.

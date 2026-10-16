@@ -39,7 +39,6 @@ Skills can target different Tines products. Check each skill’s `compatibility`
 | ---------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | [`workflow-operations`](skills/workflow-operations/) | Add schedules, triggers, notifications, retries, logging, and follow-on automation. |
 | [`workflow-review`](skills/workflow-review/)         | Explain, test, simplify, and improve an existing workflow.                          |
-| [`webapp-testing`](skills/webapp-testing/)           | Test web applications with Playwright from a code step.                             |
 
 ### Design interfaces
 
