@@ -2,7 +2,7 @@ FROM oven/bun:1.4.3
 
 WORKDIR /app
 COPY package.json bun.lock* ./
-RUN --mount=type=cache,target=/root/.bun/install/cache bun install
+RUN --mount=type=cache,target=/root/.bun/install/cache --mount=type=tmpfs,target=/tmp bun install
 COPY --link . .
 RUN bun build ./mount.tsx --minify --target=browser --define 'process.env.NODE_ENV="production"' --outfile ./bundle.js && \
   bun run --bun tailwindcss -i ./globals.css -o ./output.css --minify

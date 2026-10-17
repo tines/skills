@@ -17,7 +17,7 @@
     {
       "title": "Operate workflows",
       "description": "Skills for testing, operating, reviewing, and improving workflows with Tines products.",
-      "skills": ["webapp-testing", "workflow-operations", "workflow-review"]
+      "skills": ["workflow-operations", "workflow-review"]
     },
     {
       "title": "Design",
