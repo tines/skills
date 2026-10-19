@@ -10,9 +10,9 @@ Workflow files are plain text without executable-mode metadata. Git pushes conta
 
 ## 3B MCP server
 
-The MCP server lets external agents create, inspect, edit, run, commit, and publish workflows; manage connectors; read 3B skills; and collaborate with the in-product agent. Use MCP discovery for the current tools, descriptions, and schemas.
+The MCP server lets external agents create, inspect, edit, run, commit, and publish workflows; manage connectors; and read 3B skills. Use MCP discovery for the current tools, descriptions, and schemas.
 
-Open Settings → MCP at `<tenant-origin>/settings/mcp` to find the tenant’s MCP URL and client configuration. Sign in with OAuth or a 3B API key. Service account keys can read, run, and build through chat, but not edit directly.
+Open Settings → MCP at `<tenant-origin>/settings/mcp` to find the tenant’s MCP URL and client configuration. Sign in with OAuth or a 3B API key. Service account keys can read and run workflows, but not build them.
 
 ## 3B CLI
 
