@@ -103,7 +103,7 @@ The responding step needs `output = true` and must emit a complete HTTP response
 | `connector`   | Workflows using a workflow-backed connector               |
 | `public`      | Unauthenticated internet access                           |
 
-For a webhook or callback, write `route_auth = "external_id"` without an `:id` suffix; 3B mints and persists the ID. Call the route with that value in the `external_id` query parameter. Never invent it. Use `public` only when explicitly requested. Draft routes configured as `public`, `external_id`, `sso`, or `tenant` are still floored to space-private access until published. Draft previews require space access and do not enforce the SSO `route_sso_groups` restriction.
+For a webhook or callback, write `route_auth = "external_id"` without an `:id` suffix; 3B mints and persists the ID. Call the route with that value in the `external_id` query parameter. Never invent it. Use `public` only when explicitly requested. Draft routes configured as `public`, `external_id`, `sso`, `tenant`, or `connector` are still floored to space-private access until published. Draft previews require space access and do not enforce the SSO `route_sso_groups` restriction.
 
 Every routed workflow needs at least one `route_type`. Give each typed route a `title`, type every externally callable API endpoint as `api`, and leave internal callbacks and helpers untyped.
 
