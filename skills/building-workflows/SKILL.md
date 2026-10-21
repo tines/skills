@@ -174,7 +174,7 @@ Preserve the template’s install layers and cache mounts. In image builds, pin 
 
 ## Volumes
 
-Volumes are named POSIX directories mounted below `/storage`. Names contain 1–63 lowercase letters, digits, dashes, or underscores and begin with a letter or digit.
+Volumes are named POSIX directories mounted below `/storage`. Names contain 1–63 lowercase letters, digits, dashes, or underscores and begin with a letter or digit. Declare each mount with its own `VOLUME` instruction: a list such as `VOLUME ["notes", "drafts"]` is rejected.
 
 - `VOLUME ["state:ro"]` mounts `state` read-only.
 - `VOLUME ["state"]` allows overlapping writers. Give concurrent runs distinct paths, because when two overlapping runs change the same file, the one that publishes second fails with a conflict.
