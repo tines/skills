@@ -3,7 +3,7 @@ FROM 3b/base
 RUN \
   --mount=type=cache,target=uv \
   --mount=type=cache,target=uvx \
-  curl --proto '=https' --tlsv1.2 -fsSL "https://github.com/astral-sh/uv/releases/download/0.6.14/uv-$(uname -m)-unknown-linux-gnu.tar.gz" \
+  curl --proto '=https' --tlsv1.2 -fsSL "https://github.com/astral-sh/uv/releases/download/0.13.4/uv-$(uname -m)-unknown-linux-gnu.tar.gz" \
     | tar -xzf - --strip-components=1 && \
   chmod +x ./uv ./uvx
 
