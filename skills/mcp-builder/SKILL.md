@@ -85,7 +85,7 @@ The consent screen is the first thing a connecting user sees, so the workflow sh
 - `x-3b-consent-client`, `x-3b-consent-email`, `x-3b-consent-scope` — display values for the copy.
 - `x-3b-consent-connectors` — only when the route uses connectors in visitor mode, where each caller connects their own account: a JSON array of `{ name, connected, failed, connectUrl }`, one entry per connector, with `connectUrl` set while this caller still has to connect it.
 
-When your step sees `x-3b-consent-challenge`, return an HTML page (set response header `x-3b-consent: rendered` so 3B serves it) showing the requesting client, the signed-in email, and Allow/Deny buttons in your own branding. Each button submits a plain form POST to the decision URL with fields `challenge` (the echoed token) and `decision` (`approve` or `deny`); 3B verifies it and finishes the OAuth flow, so the page needs no crypto, cookies, or state. When the header is absent, serve your normal response. A pure API server with no UI can simply not handle the header — 3B then shows a neutral built-in screen. When `x-3b-consent-connectors` is present, list each entry with its state and, while `connectUrl` is set, a plain link to it (“Connect”, or “Retry” when `failed`); the link runs the account connection and returns to your consent page with the same challenge. Keep Allow disabled until every entry is `connected` — 3B refuses an earlier approval by sending the browser back to your page.
+When your step sees `x-3b-consent-challenge`, return an HTML page (set response header `x-3b-consent: rendered` so 3B serves it) showing the requesting client, the signed-in email, and Allow/Deny buttons in your own branding. Each button submits a plain form POST to the decision URL with fields `challenge` (the echoed token) and `decision` (`approve` or `deny`); 3B verifies it and finishes the OAuth flow, so the page needs no crypto, cookies, or state. When the header is absent, serve your normal response. A pure API server with no UI can simply not handle the header — 3B then shows a neutral built-in screen. When `x-3b-consent-connectors` is present, list each entry with its state and, while `connectUrl` is set, a plain link to it (“Connect”, or “Retry” when `failed`); for a signed-in 3B member the link usually goes straight to the provider and back to your consent page with the same challenge; connectors that sign in through a popup, and visitors who aren’t members, first show one 3B page where they confirm the account and connect. Keep Allow disabled until every entry is `connected` — 3B refuses an earlier approval by sending the browser back to your page.
 
 HTML-escape the display values before rendering them: `x-3b-consent-client` is chosen by the connecting client when it registers and connector names are free text, so treat both as untrusted, and the page shares the tenant’s edge origin, so an unescaped injection is not confined to this workflow.
 
@@ -102,11 +102,11 @@ When a tool calls a service through a connector in visitor mode, the connector u
   "error": "connector_not_connected",
   "connector": "slack",
   "message": "The caller hasn’t connected their own slack account for this space. Open connect_url in a browser to connect, then retry.",
-  "connect_url": "https://…/connectors/grant/connect?app=…&space=…&user=…"
+  "connect_url": "https://…/__3b/connectors/grant/connect?app=…&route=…&user=…"
 }
 ```
 
-Return `message` and `connect_url` verbatim as the tool result with `isError: true`, so the client shows the caller a link to connect and retry. Do not retry the request, treat it as a provider outage, or persist the link: it is a session-gated page for the signed-in caller, not a credential. A body without `connect_url` means the run had no caller identity to connect an account for, which happens on routes without authentication.
+Return `message` and `connect_url` verbatim as the tool result with `isError: true`, so the client shows the caller a link to connect and retry. Do not retry the request, treat it as a provider outage, or persist the link: it opens the caller’s connector list after they sign in, and is not a credential. A body without `connect_url` means the run had no caller identity to connect an account for, which happens on routes without authentication.
 
 ## Phase 3 — Review and test
 
