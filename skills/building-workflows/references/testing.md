@@ -18,6 +18,8 @@ Treat a failure according to its cause:
 - If intended behavior changed the expected output, show the user the expected-versus-actual result. Update the test to the new output only after the user confirms the new behavior.
 - Remove a test only when the user explicitly asks to remove that specific test.
 
+Native image step tests run inside the step’s image. Preserve the template’s POSIX shell tools, `curl`, and `jq` for recorded request replay and `sqlite3` for SQLite volume fixtures. If a custom image lacks these tools, install them in its Dockerfile and rebuild before capturing or replaying tests. Keep the application’s runtime and command unchanged.
+
 ## Volume and request fixtures
 
 For a volume test, provide only the initial files needed before the step runs. 3B captures the expected final stdout and writable volume state and verifies that read-only volumes remain unchanged. Use UTF-8 for text, `sqlite-dump` with SQL statements for SQLite, and base64 only for other binary files. SQLite is compared logically.
