@@ -1,4 +1,4 @@
-FROM oven/bun:1.4.3
+FROM oven/bun:1.4.4
 
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends curl jq sqlite3 && \
