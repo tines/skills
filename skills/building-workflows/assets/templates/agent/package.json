@@ -4,6 +4,6 @@
     "@ai-sdk/anthropic": "4.0.65",
     "@ai-sdk/provider": "4.0.18",
     "ai": "7.0.122",
-    "zod": "4.3.6"
+    "zod": "4.6.7"
   }
 }
