@@ -158,6 +158,30 @@ Never ask a user to paste a key, token, password, username, or other credential 
 
 If a connector cannot support the required authentication, explain the limitation. Do not build credential-entry forms or routes as a workaround: workflow request bodies are retained as execution inputs.
 
+### Connect screens
+
+3B doesn’t put a connect page in front of `webpage` routes; other routes still send a browser visitor who hasn’t connected to 3B’s connector list before the step runs. Whenever the workflow uses a visitor-mode connector, add connect UI by default to every `webpage` step its visitors reach, driven by the `x-3b-connectors` request header. The header arrives on a top-level page load while any of the workflow’s visitor-mode connectors isn’t connected for this visitor, and is absent once all are, so one step can serve both the connect screen and the app:
+
+```json
+[
+  {
+    "id": "JlJutfeL1elZ",
+    "name": "Slack",
+    "connected": false,
+    "failed": false,
+    "connectUrl": "https://…/__3b/connectors/grant/connect?app=…&route=…&return_url=…"
+  }
+]
+```
+
+It lists every visitor-mode connector the workflow uses: `id` is the connector ID, `failed` means the visitor’s last connection stopped working, and `connectUrl` is `null` once `connected` is `true`. A workflow can serve different people, such as a requester and an admin, so link only the connectors this page’s visitor needs: up front, when a feature first needs one, or not at all. Link each one to its `connectUrl` with a plain link (“Connect”, or “Retry” when `failed`). HTML-escape `name`, and treat `connectUrl` as opaque. The link goes to the provider and back to this page; connectors using 3B’s built-in OAuth credentials first show one 3B page with a Connect button, which a connector with the customer’s own OAuth client avoids. If the workflow uses a visitor’s account when they aren’t on the page, say so on the page.
+
+Parse the header as JSON. For React, read it from the request on stdin in `render.ts` and escape every `<` when embedding it in the page, because `name` is free text.
+
+Fetches, form posts, and iframes never get the header, so the editor preview always shows the connected state. A step that ignores the header, or whose visitor revokes a grant after the page loads, gets the `403` `connector_not_connected` above from its connector call; handle it like any other error and surface its `connect_url`. Test the screen with `run_step`’s `mockRequest.headers`, or open the route in its own tab; draft routes work the same way.
+
+If 3B still shows its own connect page in front of your page, your workspace hasn’t been switched over yet. Test your screen with `run_step`’s `mockRequest.headers` until it is.
+
 ## Tunnels
 
 3B’s native tunnels let steps reach private services using their normal hostnames, ports, and clients. An exit-node container runs inside the customer’s network or VPC and connects outbound to the 3B gateway; no inbound internet access is needed. Grant the workflow’s space access through the network’s Access tab. Matching hostname or CIDR destinations route through the tunnel, subject to egress rules. Connectors handle authentication separately.
