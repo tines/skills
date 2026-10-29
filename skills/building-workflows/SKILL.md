@@ -174,7 +174,9 @@ If a connector cannot support the required authentication, explain the limitatio
 ]
 ```
 
-It lists every visitor-mode connector the workflow uses: `id` is the connector ID, `failed` means the visitor’s last connection stopped working, and `connectUrl` is `null` once `connected` is `true`. A workflow can serve different people, such as a requester and an admin, so link only the connectors this page’s visitor needs: up front, when a feature first needs one, or not at all. Link each one to its `connectUrl` with a plain link (“Connect”, or “Retry” when `failed`). HTML-escape `name`, and treat `connectUrl` as opaque. The link goes to the provider and back to this page; connectors using 3B’s built-in OAuth credentials first show one 3B page with a Connect button, which a connector with the customer’s own OAuth client avoids. If the workflow uses a visitor’s account when they aren’t on the page, say so on the page.
+It lists every visitor-mode connector the workflow uses: `id` is the connector ID, `failed` means the visitor’s last connection stopped working, and `connectUrl` is `null` once `connected` is `true`. A workflow can serve different people, such as a requester and an admin, so link only the connectors this page’s visitor needs: up front, when a feature first needs one, or not at all. Link each one to its `connectUrl` with a plain link (“Connect”, or “Retry” when `failed`). HTML-escape `name`, and treat `connectUrl` as opaque. The link goes to the provider and back to this page; connectors using 3B’s built-in OAuth credentials first show one 3B page with a Connect button, and the provider names 3B’s OAuth app, which a connector with the customer’s own OAuth client avoids. If the workflow uses a visitor’s account when they aren’t on the page, say so on the page.
+
+If connecting fails, the visitor comes back to this page with `__3b_connect_error=<connector ID>`. A visitor who closes the popup of a connector using 3B’s built-in OAuth credentials stays on 3B’s page.
 
 Parse the header as JSON. For React, read it from the request on stdin in `render.ts` and escape every `<` when embedding it in the page, because `name` is free text.
 
