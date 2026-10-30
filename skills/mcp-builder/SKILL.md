@@ -56,10 +56,14 @@ To restrict an `sso` route to certain IdP groups, add `route_sso_groups = ["Secu
 
 ### Every request is a run, so refuse what you don’t serve
 
-3B hands your step the raw HTTP request on stdin and turns every request into a workflow run, whatever the method (3B answers `OPTIONS` preflights itself, so your step never sees them). Streamable-HTTP clients open a `GET` on the endpoint to listen for server-to-client messages, and the spec requires you to either hold that stream open or answer `405 Method Not Allowed`. A `200` on `GET` tells the client the stream closed, so compliant clients reconnect immediately: one server that did this received a reconnect every two seconds from each connected Claude Code session, and each one was a full run. The one `GET` you must serve is the consent render described below, which arrives with `x-3b-consent-challenge`. After that check, answer `405` to anything but `POST` before parsing a body or touching a connector. With `method` and lowercased `headers` parsed from the request on stdin:
+3B hands your step the raw HTTP request on stdin and turns every request into a workflow run, whatever the method (3B answers `OPTIONS` preflights itself, so your step never sees them). Streamable-HTTP clients open a `GET` on the endpoint to listen for server-to-client messages, and the spec requires you to either hold that stream open or answer `405 Method Not Allowed`. A `200` on `GET` tells the client the stream closed, so compliant clients reconnect immediately: one server that did this received a reconnect every two seconds from each connected Claude Code session, and each one was a full run. The `GET`s you must serve are the consent render, which arrives with `x-3b-consent-challenge`, and the connect screen, which arrives with `x-3b-connectors`. After those checks, answer `405` to anything but `POST` before parsing a body or touching a connector. With `method` and lowercased `headers` parsed from the request on stdin:
 
 ```ts
-if (!headers["x-3b-consent-challenge"] && method !== "POST") {
+if (
+  !headers["x-3b-consent-challenge"] &&
+  !headers["x-3b-connectors"] &&
+  method !== "POST"
+) {
   const body = JSON.stringify({
     jsonrpc: "2.0",
     id: null,
@@ -72,7 +76,7 @@ if (!headers["x-3b-consent-challenge"] && method !== "POST") {
     `HTTP/1.1 405 Method Not Allowed\r\nAllow: POST\r\nContent-Type: application/json\r\nContent-Length: ${Buffer.byteLength(body)}\r\n\r\n${body}`
   );
 } else {
-  // render consent when x-3b-consent-challenge is present, otherwise parse the JSON-RPC body
+  // render consent or the connect screen when its header is present, otherwise parse the JSON-RPC body
 }
 ```
 
@@ -85,7 +89,7 @@ The consent screen is the first thing a connecting user sees, so the workflow sh
 - `x-3b-consent-client`, `x-3b-consent-email`, `x-3b-consent-scope` — display values for the copy.
 - `x-3b-consent-connectors` — only when the route uses connectors in visitor mode, where each caller connects their own account: a JSON array of `{ id, name, connected, failed, connectUrl }`, one entry per connector, with `connectUrl` set while this caller still has to connect it.
 
-When your step sees `x-3b-consent-challenge`, return an HTML page (set response header `x-3b-consent: rendered` so 3B serves it) showing the requesting client, the signed-in email, and Allow/Deny buttons in your own branding. Each button submits a plain form POST to the decision URL with fields `challenge` (the echoed token) and `decision` (`approve` or `deny`); 3B verifies it and finishes the OAuth flow, so the page needs no crypto, cookies, or state. When the header is absent, serve your normal response. A pure API server with no UI can simply not handle the header — 3B then shows a neutral built-in screen. When `x-3b-consent-connectors` is present, list each entry with its state and, while `connectUrl` is set, a plain link to it (“Connect”, or “Retry” when `failed`); the link usually goes straight to the provider and back to your consent page with the same challenge; connectors that sign in through a popup first show one 3B page with a Connect button. Keep Allow disabled until every entry is `connected` — 3B refuses an earlier approval by sending the browser back to your page.
+When your step sees `x-3b-consent-challenge`, return an HTML page (set response header `x-3b-consent: rendered` so 3B serves it) showing the requesting client, the signed-in email, and Allow/Deny buttons in your own branding. Each button submits a plain form POST to the decision URL with fields `challenge` (the echoed token) and `decision` (`approve` or `deny`); 3B verifies it and finishes the OAuth flow, so the page needs no crypto, cookies, or state. When the header is absent, serve your normal response. Every server needs this page, even a pure API server with no other UI: if the step doesn’t claim the render, sign-in fails with an error. When `x-3b-consent-connectors` is present, list each entry with its state and, while `connectUrl` is set, a plain link to it (“Connect”, or “Retry” when `failed`); the link usually goes straight to the provider and back to your consent page with the same challenge; connectors that sign in through a popup first show one 3B page with a Connect button. Keep Allow disabled until every entry is `connected` — 3B refuses an earlier approval by sending the browser back to your page.
 
 HTML-escape the display values before rendering them: `x-3b-consent-client` is chosen by the connecting client when it registers and connector names are free text, so treat both as untrusted, and the page shares the tenant’s edge origin, so an unescaped injection is not confined to this workflow.
 
@@ -102,11 +106,11 @@ When a tool calls a service through a connector in visitor mode, the connector u
   "error": "connector_not_connected",
   "connector": "slack",
   "message": "The caller hasn’t connected their own slack account for this space. Open connect_url in a browser to connect, then retry.",
-  "connect_url": "https://…/__3b/connectors/grant/connect?app=…&route=…&user=…"
+  "connect_url": "https://…/mcp"
 }
 ```
 
-Return `message` and `connect_url` verbatim as the tool result with `isError: true`, so the client shows the caller a link to connect and retry. Do not retry the request, treat it as a provider outage, or persist the link: it opens the caller’s connector list after they sign in, and is not a credential. A body without `connect_url` means the run had no caller identity to connect an account for, which happens on routes without authentication.
+Return `message` and `connect_url` verbatim as the tool result with `isError: true`, so the client shows the caller a link to connect and retry. Do not retry the request or treat it as a provider outage. `connect_url` opens this route in the caller’s browser after they sign in: draw the connect screen there as the `building-workflows` skill’s **Connect screens** section describes, and once every entry is connected, tell the caller to return to the client. A body without `connect_url` means the run had no caller identity to connect an account for, which happens on routes without authentication.
 
 ## Phase 3 — Review and test
 
