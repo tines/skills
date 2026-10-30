@@ -7,7 +7,13 @@ compatibility: Tines 3B
 
 # Build 3B workflows
 
-Read [references/interfaces.md](references/interfaces.md) when choosing or using an editing interface. Read [references/testing.md](references/testing.md) before running a step or creating, updating, or running step tests.
+- Read [references/interfaces.md](references/interfaces.md) when choosing or using an editing interface.
+- Read [references/testing.md](references/testing.md) before running a step or creating, updating, or running step tests.
+- Read [references/routes.md](references/routes.md) before adding or changing a step with `route`: authentication modes, `api.json`, identity and consent headers, cookies, long-running requests, and route URLs.
+- Read [references/connectors.md](references/connectors.md) before searching for, attaching, or calling a connector, or when a visitor-mode connector answers `403`.
+- Read [references/tunnels.md](references/tunnels.md) when a step must reach a private network or on-premises service.
+- Read [references/dockerfile.md](references/dockerfile.md) before changing a step’s Dockerfile, dependencies, build layers, or cache mounts, or when asked for checkpoint and restore.
+- Read [references/volumes.md](references/volumes.md) before a step writes to a volume: concurrency, draft storage set-up, and publish semantics.
 
 ## Layout
 
@@ -20,9 +26,7 @@ README.md
   ...
 ```
 
-Within a workflow checkout, each top-level directory is a uniquely named step. Keep a `README.md` at the root and in every step. The UI already displays the workflow or step name, so do not repeat it as the opening heading.
-
-The workflow README should explain its business purpose, triggers, flow, boundary inputs and outputs, external services, side effects, useful operational notes, and where to make common changes. A step README should identify its trigger and explain its behavior, non-obvious input and output shapes, external endpoints, and connectors. Link to workflow files with relative Markdown paths, wrapping paths containing spaces in angle brackets. Update a README when behavior or structure changes materially, but not for a behavior-preserving refactor.
+Within a workflow checkout, each top-level directory is a uniquely named step. Keep a `README.md` at the root and in every step describing purpose, trigger, and behavior; the UI already displays the workflow or step name, so do not repeat it as the opening heading.
 
 A cloned 3B space adds one directory per workflow:
 
@@ -42,9 +46,7 @@ Templates map to `shell` → `script.sh`, `python` → `script.py`, `typescript`
 
 Copy the closest template available through the current interface. Default to TypeScript for data processing when the user has not requested another language. In a Git checkout without interface-provided templates, copy the matching directory from [assets/templates](assets/templates) into the workflow and rename it for the step. A step may contain and import additional source files; the template entry point is the command the runtime invokes. A step builds from its own folder only, so it can’t import files from the workflow root or another step: copy a shared helper into each step that uses it. Add Python dependencies to `requirements.txt` and TypeScript or React dependencies to `package.json`; preserve the template’s install and cache layers instead of adding ad hoc installs to the Dockerfile.
 
-For React, default to one step for one application. Do not place the UI downstream of a data step: render it immediately and fetch data from route steps. For multi-page applications, use `BrowserRouter` with `basename={window.__ROUTE_PATH__}` and relative route paths; the template computes the branch-aware base path. Use Tailwind’s built-in palette and spacing scale, and avoid adding browser dependencies without a concrete need.
-
-Render a descriptive `<title>` for every page. Include an app-specific favicon in every web application, including plain HTML pages. Preserve an existing custom favicon; otherwise, create a simple SVG mark using the application’s colors and identity, legible at 16×16. Put `<link rel="icon" type="image/svg+xml">` in the HTML `<head>` (`render.ts` for React), replacing the template’s title-derived favicon link. Set its `href` to `data:image/svg+xml,` followed by the SVG encoded with `encodeURIComponent`, so the favicon works without a separate asset route. A webpage is complete only when its title and favicon are set.
+For React, default to one step for one application. Do not place the UI downstream of a data step: render it immediately and fetch data from route steps. For multi-page applications, use `BrowserRouter` with `basename={window.__ROUTE_PATH__}` and relative route paths; the template computes the branch-aware base path. Use Tailwind’s built-in palette and spacing scale, and avoid adding browser dependencies without a concrete need. Render a descriptive `<title>` for every page.
 
 ## `config.toml`
 
@@ -67,7 +69,7 @@ pinned = true
 ```
 
 - Colors: `pink`, `purple`, `teal`, `green`, `orange`, `red`, or `sky`.
-- `output`: makes stdout the HTTP response.
+- `output`: makes stdout the HTTP response, which must be a complete HTTP response with `\r\n` line endings and a `\r\n\r\n` separator before the body. Without a reachable output step, 3B returns `202 Accepted` with no body.
 - `route`: assigns an HTTP path. Live routes must be unique among workflows that share an edge host. `/` is that host’s catch-all and should be used only for an explicitly requested homepage.
 - `route_auth`: defaults to `space`.
 - `route_type`: exposes the route on the Links page as `webpage`, `api`, `webhook`, or `other`.
@@ -90,58 +92,6 @@ Zero-byte stdout suppresses downstream execution. A step reports failure only th
 
 A step with no trigger receives empty stdin. A route step receives a complete RFC 7230 HTTP request. An email step receives the raw RFC 822 message.
 
-## HTTP routes
-
-The responding step needs `output = true` and must emit a complete HTTP response with `\r\n` line endings and a `\r\n\r\n` separator before the body. Without a reachable output step, 3B returns `202 Accepted` with no body.
-
-| `route_auth`  | Access                                                    |
-| ------------- | --------------------------------------------------------- |
-| `space`       | Members of the workflow’s space; the default              |
-| `tenant`      | Any authenticated tenant member                           |
-| `sso`         | External users authenticated by the tenant’s SSO provider |
-| `external_id` | Anyone holding the route’s unguessable ID                 |
-| `connector`   | Workflows using a workflow-backed connector               |
-| `public`      | Unauthenticated internet access                           |
-
-For a webhook or callback, write `route_auth = "external_id"` without an `:id` suffix; 3B mints and persists the ID. Call the route with that value in the `external_id` query parameter. Never invent it. Use `public` only when explicitly requested. Draft routes configured as `public`, `external_id`, `sso`, `tenant`, or `connector` are still floored to space-private access until published. Draft previews require space access and do not enforce the SSO `route_sso_groups` restriction.
-
-Every routed workflow needs at least one `route_type`. Give each typed route a `title`, type every externally callable API endpoint as `api`, and leave internal callbacks and helpers untyped.
-
-An API route intended for callers should include `api.json`: a nonempty object keyed by lowercase HTTP method whose values are OpenAPI 3.1 Operation Objects. 3B derives the path and security, so omit `paths`, `servers`, and `security`. Inline schemas instead of using component references. An `api.json` file is rejected unless its step has a non-root route with `route_type = "api"`.
-
-`space` and `tenant` routes accept a browser session, a 3B API key, or a 3B OAuth access token. `sso` authenticates external users through the tenant’s configured SAML or OIDC provider without creating a 3B account. When the tenant has more than one SSO provider, add `route_idp = "<provider ID>"` next to `route_auth = "sso"` to designate which provider gates the route; without it, the tenant’s primary provider is used. Only set `route_idp` to one of the tenant’s registered provider IDs — never invent one. Successful `space`, `tenant`, and `sso` authentication adds a spoof-proof `x-3b-authenticated-email` header. 3B strips its bearer token before invoking step code. A `connector` route is called only through a workflow-backed connector; the proxy supplies its authentication header. When a user triggered the calling workflow’s run (through a `space`, `tenant`, or `sso` route, or chat), the connector route also receives that user’s `x-3b-authenticated-email` and `x-3b-authenticated-groups` (current 3B groups for members, or the verified IdP group snapshot for external SSO callers); calls from schedules, webhooks, or service accounts carry neither. Every call from a running workflow, including scheduled and webhook runs, also receives spoof-proof `x-3b-calling-workflow-id`, `x-3b-calling-space-id`, and `x-3b-calling-branch` headers; the branch is `main` for the live version, otherwise the draft branch’s ID. The identity headers name the user who started the calling run, not whoever wrote the calling workflow’s code, so a route that authorizes on them should also check that the calling workflow is one it trusts and that the branch is `main`.
-
-Step code can read verified group names from the spoof-proof `x-3b-authenticated-groups` header, a JSON array of strings. Parse it as JSON, never split on commas. It contains the IdP group snapshot for SSO callers and current 3B group names for members; it is absent when there are no verified groups. 3B strips caller-supplied values on every route before injecting verified names.
-
-To restrict an `sso` route to certain IdP groups, add `route_sso_groups = ["Security Team"]`: 3B answers 403 before the step runs unless the caller belongs to at least one listed group, compared case-insensitively. The provider must emit the `groups` claim. Use values the user confirms are emitted — never invent them. `route_sso_groups` requires `route_auth = "sso"`; other auth modes are rejected during facet synchronization, including for drafts.
-
-External group membership is a snapshot: browser SSO sessions retain it for two hours, and OAuth retains it through a fixed 30-day refresh chain, with up to 30 additional minutes for the final access token. Refreshing does not update groups, so IdP group removal does not promptly revoke access. Workflow runs and chained workflow connectors retain the snapshot captured at entry for the lifetime of those runs, including after the original sign-in expires. Missing groups, including claims dropped because their base64url JSON exceeds 2 KB, cannot satisfy `route_sso_groups`.
-
-A route accepting OAuth clients must render its own consent screen: when a client signs in, 3B serves the route with unspoofable `x-3b-consent-*` headers (a signed challenge, a decision URL, display values, and the caller’s connector grants when the route uses visitor-mode connectors), and the step returns an HTML Allow/Deny page that posts the decision back (the mcp-builder skill documents the contract). No config key or extra route is needed; if the step ignores the headers, sign-in fails with an error.
-
-When adding or changing a route, tell the user who can access it. Do not describe a route as public when draft access is still floored to space membership.
-
-Cookies are pinned to the serving host. 3B strips `Domain`, changes `SameSite=None` to `SameSite=Lax`, signs `HttpOnly` values for the space, and forces `Secure` on HTTPS responses. Prefer `__Host-` cookie names with `Path=/`, `Secure`, and `HttpOnly`; omit `HttpOnly` only when browser JavaScript must read the cookie.
-
-Keep APIs synchronous only for short, bounded work. For long or variable work, promptly return `202 Accepted` with a durable operation ID and status URL, then continue downstream. Because that HTTP response becomes downstream stdin, include the operation ID and required job payload in its body and parse the HTTP message in the next step. Persist pending, succeeded, and failed state in a named volume, and make retries idempotent. An empty automatic `202` is only for fire-and-forget work; use `201 Created` only when the requested resource has been created before responding.
-
-Stream when incremental output is useful, but streaming and keepalives are not durable. When completion matters, persist progress and provide a status or resume path; client and proxy timeouts, network interruptions, and deployment draining may end the request before the step’s `timeout`.
-
-### Route URLs
-
-Construct URLs for the workflow’s own routes from `_3B_WORKFLOW_BASE_URL` at runtime. It contains the space’s edge origin plus the draft branch prefix, with no trailing slash; in Live it is just the origin. It is available without HTTP input, including in scheduled runs.
-
-```ts
-const callbackUrl = `${process.env._3B_WORKFLOW_BASE_URL}/my-app/callback`;
-const callbackPath = new URL(callbackUrl).pathname;
-```
-
-Use absolute URLs for external callbacks and origin-relative paths for browser links, forms, redirects, and fetches that should stay on the serving host. Append the configured route directly: adding another branch prefix duplicates it, and `new URL("/my-app/callback", baseUrl)` discards it.
-
-Read runtime variables in step code, not browser code or build scripts. For React, construct URLs in `render.ts` and serialize them into the page for the browser bundle. `window.__ROUTE_PATH__` includes the current page’s route; use it as the router basename, not as a base for sibling routes. The HTTP request on stdin has its draft prefix stripped.
-
-Do not hardcode deployment hostnames or IDs into the workflow’s own URLs. External callback registrations and client configuration must use the destination route’s URL after import.
-
 ## Other runtime contracts
 
 `email_address` is a lowercase local-part of letters, digits, and internal dashes, up to 64 characters; it must begin and end with a letter or digit and be unique in the deployment’s configured inbound-email scope. The full address is deployment-specific.
@@ -150,64 +100,16 @@ Each running step is limited to 1 vCPU, 2 GiB of memory with no swap, and 25,000
 
 ## Connectors
 
-Use connectors whenever a step or build-time investigation needs authenticated access to another service. When the workflow depends on the service at runtime, write ordinary requests without `Authorization` headers, API keys, or credential placeholders, then attach the connector to that step through the current interface’s connector tooling. When the service is only a build aid, connect it to the chat or execution context if the interface supports that, and do not modify a step. Prefer an exact literal target URL, including the scheme, hostname, and representative path, when known; otherwise search by service name. Follow only the environment variables and usage notes returned by the connector’s AI context. A connector in visitor mode uses the caller’s own account, and when the caller has none connected 3B answers the request with `403` and a `connector_not_connected` JSON body carrying a `connect_url`; surface that link to the caller instead of failing (the mcp-builder skill documents the body).
-
-For SSO-only visitors, an app can disconnect the current visitor’s authorization with a same-origin POST to `/__3b/connectors/grant/disconnect?app=<connector-id>&route=<published-input-route>` using their browser session; `204` means disconnected (including already disconnected), and `401` means sign in again. Use the connector ID from connector tooling and the published input route that uses it, and explain before confirmation: “Disconnecting removes this account’s authorization for this connector across the apps in this space that use it.”
-
-Never ask a user to paste a key, token, password, username, or other credential into chat. If a credential appears anyway, do not put it in files or commands; use a connector and tell the user to rotate the exposed credential. To detach a connector from a step, use connector tooling rather than editing `config.toml`.
-
-If a connector cannot support the required authentication, explain the limitation. Do not build credential-entry forms or routes as a workaround: workflow request bodies are retained as execution inputs.
-
-### Connect screens
-
-3B doesn’t put a connect page in front of routes, except non-`webpage` routes on workflows created before 31 October 2026, which still send a visitor with a missing connector to 3B’s connector list before the step runs. Whenever the workflow uses a visitor-mode connector, add connect UI by default to every step its visitors open in a browser, driven by the `x-3b-connectors` request header. 3B sends it on a signed-in visitor’s top-level page load when it wants a screen from the step: on a `webpage` route only while one of the workflow’s visitor-mode connectors isn’t connected, so the app shows once all are; on other route types whenever the workflow uses one, because a visitor sent there by a tool’s `connect_url` has nowhere else to land. Decide from the entries, not the header’s presence: while a connector this visitor needs isn’t connected, draw the connect screen; otherwise serve your normal response, except on a route with nothing to show a browser (such as an MCP endpoint), where you confirm everything is connected and tell them to go back to their client. Return any screen drawn for 3B as HTML with the response header `x-3b-consent: rendered`, or 3B shows it as plain text on non-`webpage` routes. The header looks like this:
-
-```json
-[
-  {
-    "id": "JlJutfeL1elZ",
-    "name": "Slack",
-    "connected": false,
-    "failed": false,
-    "connectUrl": "https://…/__3b/connectors/grant/connect?app=…&route=…&return_url=…"
-  }
-]
-```
-
-It lists every visitor-mode connector the workflow uses: `id` is the connector ID, `failed` means the visitor’s last attempt to connect failed or their connection stopped working, and `connectUrl` is `null` once `connected` is `true`. A workflow can serve different people, such as a requester and an admin, so link only the connectors this page’s visitor needs: up front, when a feature first needs one, or not at all. Link each one to its `connectUrl` with a plain link (“Connect”, or “Retry” when `failed`). HTML-escape `name`, and treat `connectUrl` as opaque. The link goes to the provider and back to this page; connectors using 3B’s built-in OAuth credentials first show one 3B page with a Connect button, and the provider names 3B’s OAuth app, which a connector with the customer’s own OAuth client avoids. If the workflow uses a visitor’s account when they aren’t on the page, say so on the page.
-
-If connecting fails, the visitor comes back to this page with that entry `failed`. A visitor who closes the popup of a connector using 3B’s built-in OAuth credentials stays on 3B’s page.
-
-Parse the header as JSON. For React, read it from the request on stdin in `render.ts` and escape every `<` when embedding it in the page, because `name` is free text.
-
-Fetches, form posts, and iframes never get the header, so the editor preview always shows the connected state. A step that ignores the header, or whose visitor revokes a grant after the page loads, gets the `403` `connector_not_connected` above from its connector call; handle it like any other error and surface its `connect_url`. Test the screen with `run_step`’s `mockRequest.headers`, or open the route in its own tab; draft routes work the same way. A refused call’s `connect_url` opens the route the run started from, or its draft route for a draft run, so that route’s step must draw the connect screen, and a route without a response step can’t show one.
-
-If 3B still shows its own connect page in front of your page, your workspace hasn’t been switched over yet. Test your screen with `run_step`’s `mockRequest.headers` until it is.
-
-## Tunnels
-
-3B’s native tunnels let steps reach private services using their normal hostnames, ports, and clients. An exit-node container runs inside the customer’s network or VPC and connects outbound to the 3B gateway; no inbound internet access is needed. Grant the workflow’s space access through the network’s Access tab. Matching hostname or CIDR destinations route through the tunnel, subject to egress rules. Connectors handle authentication separately.
-
-Creating a tunnel requires tunnels to be enabled for the deployment and permission to create networks, available through the Network creator role. For setup, link to [Networking](/settings/networking) or [New tunnel network](/settings/networking/new). In external interfaces, prefix these links with the tenant’s UI origin. You can help provision the exit-node container using the generated setup instructions, with access to the private destinations and outbound access to the gateway. Have the user save the token shown once at creation and supply it locally as `TUNNEL_TOKEN`; a lost token requires a new network.
-
-## Dockerfile
-
-For ordinary image builds, copy dependency manifests and lockfiles first, install dependencies, and then copy application source before compiling or testing it. Keep package download caches in cache mounts and installed runtime dependencies in image layers. Use standard multi-stage builds to exclude build tools and test fixtures from the runtime image. Build checks must supply their own environment and storage fixtures because workflow URLs, connectors, and volumes belong to execution.
-
-Use the Dockerfile from the template available through the current interface. With workflow image builds enabled, templates use versioned OCI base images and normal Dockerfile instructions. Without image builds, `FROM 3b/base` must be the first instruction. That checkpoint builder supports `RUN <command>`, `COPY <sources...> .`, `CMD <command>`, `LABEL`, and `VOLUME`; unsupported instructions are ignored. `RUN` supports line continuations and quoted heredocs. Labels other than the checkpoint opt-in below do not affect execution.
-
-Preserve the template’s install layers and cache mounts. In image builds, pin exact versions of direct dependencies in the manifest, keep any lockfile the step already has, and never write a lockfile by hand. Image builds support normal Docker cache mounts. Put only the package manager’s download cache and compiler output in them, copy the finished program out of the mount in the same `RUN`, and keep installed runtime dependencies such as `node_modules` in the image. For the checkpoint builder, cache mounts use `RUN --mount=type=cache,target=<name>`, where `<name>` is one work-directory-relative segment containing letters, digits, `.`, `_`, or `-`. Do not use an absolute cache path with that builder. Add npm dependencies to `package.json` so the template’s existing Bun install layer can cache them.
-
-`LABEL io.3b.exec.checkpoint.v2=true` opts into application-defined checkpoint and restore. Do not add it by default. Use it only when the user asks to reuse expensive initialized memory: initialize repeatably, call `/opt/3b/next` to define the checkpoint boundary, parse its `{ execId, env }` JSON after restore, and read execution input and access volumes only after that boundary. Each restored sandbox is single-use, and anything that must be fresh belongs after `next`. Open network connections and listeners only after `next`: a socket that is still open when `next` is called fails the checkpoint, because it cannot survive restore.
+Use a connector whenever a step needs authenticated access to another service: write ordinary requests without `Authorization` headers, API keys, or credential placeholders, then attach the connector to the step through the current interface’s connector tooling, and detach it the same way. Never ask a user to paste a key, token, password, username, or other credential into chat. If a credential appears anyway, do not put it in files or commands; use a connector and tell the user to rotate the exposed credential. If a connector cannot support the required authentication, explain the limitation. Do not build credential-entry forms or routes as a workaround: workflow request bodies are retained as execution inputs.
 
 ## Volumes
 
 Volumes are named POSIX directories mounted below `/storage`. Names contain 1–63 lowercase letters, digits, dashes, or underscores and begin with a letter or digit. Declare each mount with its own `VOLUME` instruction: a list such as `VOLUME ["notes", "drafts"]` is rejected.
 
 - `VOLUME ["state:ro"]` mounts `state` read-only.
-- `VOLUME ["state"]` allows overlapping writers. Give concurrent runs distinct paths, because when two overlapping runs change the same file, the one that publishes second fails with a conflict.
+- `VOLUME ["state"]` allows overlapping writers; give concurrent runs distinct paths.
 - `VOLUME ["scratch:scope=run"]` gives one workflow run isolated writable storage shared by steps in that run.
 
-For any named volume or filesystem-backed state, use `workflow-volume-design` before choosing mounts or file layout. Keep frequent request steps to the files they need, give concurrent inputs unique paths, and move shared database updates and cleanup to bounded background work when the product allows it. In Live, a volume belongs to the space and is selected by name, so workflows in the same space share a named volume. Draft branches have isolated files that start empty and are discarded with the draft. When live, or the branch a draft was forked from, already holds data for a volume the workflow uses, the workflow context says the draft’s stored data is not set up yet and tells you how to settle it with `seedBranchStorage`: start empty, copy live’s data, or copy the fork source’s data. Follow it before running any step that mounts the volume; the first run on undecided storage settles the draft on empty storage. The user can also reset a draft’s stored data from the storage browser, and when pushing live can seed live volumes that have no data yet from the draft. A step writes through a private view and publishes its changes only when it succeeds.
+In Live, a volume belongs to the space and is selected by name, so workflows in the same space share a named volume. Draft branches have isolated files that start empty and are discarded with the draft. For any named volume or filesystem-backed state, use `workflow-volume-design` before choosing mounts or file layout.
 
-Never store passwords, API keys, OAuth tokens, private keys, or reusable session credentials in volumes, even when the user requests it. File permissions and calling a file “session state” do not make it a secret store. When replacing existing secret storage, tell the user to rotate exposed credentials and account for existing volume files and retained execution inputs; changing the code does not remove those copies.
+Never store passwords, API keys, OAuth tokens, private keys, or reusable session credentials in volumes, even when the user requests it.

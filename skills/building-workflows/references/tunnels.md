@@ -1,0 +1,5 @@
+# Tunnels
+
+3B’s native tunnels let steps reach private services using their normal hostnames, ports, and clients. An exit-node container runs inside the customer’s network or VPC and connects outbound to the 3B gateway; no inbound internet access is needed. Grant the workflow’s space access through the network’s Access tab. Matching hostname or CIDR destinations route through the tunnel, subject to egress rules. Connectors handle authentication separately.
+
+Creating a tunnel requires tunnels to be enabled for the deployment and permission to create networks, available through the Network creator role. For setup, link to [Networking](/settings/networking) or [New tunnel network](/settings/networking/new). In external interfaces, prefix these links with the tenant’s UI origin. You can help provision the exit-node container using the generated setup instructions, with access to the private destinations and outbound access to the gateway. Have the user save the token shown once at creation and supply it locally as `TUNNEL_TOKEN`; a lost token requires a new network.
