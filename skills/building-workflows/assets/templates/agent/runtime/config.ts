@@ -38,19 +38,11 @@ const AgentConfigSchema = z.object({
     .optional(),
 });
 
-export type ModelConfig = {
-  provider: string;
-  model: string;
-  effort?: string;
-  baseUrl?: string;
-  thinking?: ThinkingConfig;
-};
+export type ModelConfig = Omit<z.infer<typeof AgentConfigSchema>, "limits">;
 
-export type Limits = {
-  maxSteps: number;
-  tokenBudget: number;
-  maxOutputTokens: number;
-};
+export type Limits = Required<
+  NonNullable<z.infer<typeof AgentConfigSchema>["limits"]>
+>;
 
 export type AgentConfig = { model: ModelConfig; limits: Limits };
 
