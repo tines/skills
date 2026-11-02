@@ -19,8 +19,6 @@ Treat a failure according to its cause:
 - If intended behavior changed the expected output, show the user the expected-versus-actual result. Update the test to the new output only after the user confirms the new behavior.
 - Remove a test only when the user explicitly asks to remove that specific test.
 
-A passing test can also warn that it passes only under the frozen clock it was pinned with. Fix it the same way, without asking, masking the values that differ in the warning, and delete the test’s `.clock` file under `tests/step-tests/`.
-
 Native image step tests run inside the step’s image. Preserve the template’s POSIX shell tools, `curl`, and `jq` for recorded request replay and `sqlite3` for SQLite volume fixtures. If a custom image lacks these tools, install them in its Dockerfile and rebuild before capturing or replaying tests. Keep the application’s runtime and command unchanged.
 
 ## Volume and request fixtures
