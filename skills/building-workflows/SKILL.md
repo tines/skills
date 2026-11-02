@@ -1,6 +1,6 @@
 ---
 name: building-workflows
-description: Build and modify Tines 3B workflows from a workflow or space Git checkout, the 3B MCP server, the 3B CLI, or the in-product editor. Use whenever an agent works with workflow.toml, step directories, config.toml, FROM 3b/base Dockerfiles, workflow routes, links, triggers, connectors, step tests, or needs to create, inspect, run, debug, commit, or publish a 3B workflow.
+description: Build and modify Tines 3B workflows from a workflow or space Git checkout, the 3B MCP server, the 3B CLI, or the in-product editor. Use whenever an agent works with workflow.toml, step directories, config.toml, Dockerfiles, workflow routes, links, triggers, connectors, step tests, or needs to create, inspect, run, debug, commit, or publish a 3B workflow.
 license: Apache-2.0
 compatibility: Tines 3B
 ---
@@ -12,7 +12,7 @@ compatibility: Tines 3B
 - Read [references/routes.md](references/routes.md) before adding or changing a step with `route`: authentication modes, `api.json`, identity and consent headers, cookies, long-running requests, and route URLs.
 - Read [references/connectors.md](references/connectors.md) before searching for, attaching, or calling a connector, or when a visitor-mode connector answers `403`.
 - Read [references/tunnels.md](references/tunnels.md) when a step must reach a private network or on-premises service.
-- Read [references/dockerfile.md](references/dockerfile.md) before changing a step’s Dockerfile, dependencies, build layers, or cache mounts, or when asked for checkpoint and restore.
+- Read [references/dockerfile.md](references/dockerfile.md) before changing a step’s Dockerfile, dependencies, build layers, or cache mounts.
 - Read [references/volumes.md](references/volumes.md) before a step writes to a volume: concurrency, draft storage set-up, and publish semantics.
 
 ## Layout

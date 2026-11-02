@@ -1,25 +1,11 @@
-FROM 3b/base
+FROM python:3.13-slim
 
-RUN \
-  --mount=type=cache,target=uv \
-  --mount=type=cache,target=uvx \
-  curl --proto '=https' --tlsv1.2 -fsSL "https://github.com/astral-sh/uv/releases/download/0.13.4/uv-$(uname -m)-unknown-linux-gnu.tar.gz" \
-    | tar -xzf - --strip-components=1 && \
-  chmod +x ./uv ./uvx
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends curl jq sqlite3 && \
+    rm -rf /var/lib/apt/lists/* /var/log/apt /var/log/dpkg.log /var/cache/ldconfig/aux-cache
+COPY requirements.txt* ./
+RUN --mount=type=cache,target=/root/.cache/pip \
+  if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+COPY --link . .
 
-RUN \
-  --mount=type=cache,target=python \
-  curl --proto '=https' --tlsv1.2 -fsSL "https://github.com/astral-sh/python-build-standalone/releases/download/20250409/cpython-3.13.3+20250409-$(uname -m)-unknown-linux-gnu-install_only_stripped.tar.gz" \
-    | tar -xzf -
-
-COPY requirements.txt .
-RUN \
-  --mount=type=cache,target=site-packages \
-  if [ -f requirements.txt ]; then \
-    LD_LIBRARY_PATH=./python/lib UV_NATIVE_TLS=true \
-    ./uv pip install --python ./python/bin/python3 --target site-packages -r requirements.txt; \
-  fi
-
-COPY script.py .
-CMD LD_LIBRARY_PATH=./python/lib PYTHONPATH=./site-packages \
-    ./python/bin/python3 -S script.py
+CMD ["python", "./script.py"]
