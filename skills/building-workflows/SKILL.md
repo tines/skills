@@ -110,6 +110,6 @@ Volumes are named POSIX directories mounted below `/storage`. Names contain 1–
 - `VOLUME ["state"]` allows overlapping writers; give concurrent runs distinct paths.
 - `VOLUME ["scratch:scope=run"]` gives one workflow run isolated writable storage shared by steps in that run.
 
-In Live, a volume belongs to the space and is selected by name, so workflows in the same space share a named volume. Draft branches have isolated files that start empty and are discarded with the draft. For any named volume or filesystem-backed state, use `workflow-volume-design` before choosing mounts or file layout.
+In Live, a volume belongs to the space and is selected by name, so workflows in the same space share a named volume. Draft branches have isolated files that are discarded with the draft. For any named volume or filesystem-backed state, use `workflow-volume-design` before choosing mounts or file layout.
 
 Never store passwords, API keys, OAuth tokens, private keys, or reusable session credentials in volumes, even when the user requests it.
