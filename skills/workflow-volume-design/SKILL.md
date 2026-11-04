@@ -72,8 +72,14 @@ Use `VOLUME ["work:scope=run"]` for files needed only within one workflow run. A
 ## Other useful shapes
 
 - Independent uploads, generated artifacts, and cache entries can use one directory per job or source key. Readers can use those paths directly when no cross-job query is needed.
-- SQLite suits indexed mutable state with one writer per database file. DuckDB suits batch analysis over tabular data. Other embedded databases can also work when their read and write behavior fits the workflow. Keep each database and its working files under one writer, and use a remote source when it can answer the required query without a local copy.
+- SQLite suits indexed mutable state with one writer per database file. DuckDB suits batch analysis over tabular data. Other embedded databases can also work when their read and write behavior fits the workflow. Keep each database and its working files under one writer, and use a remote source when it can answer the required query without a local copy. When a SQLite database grows to hundreds of megabytes read by scattered lookups, `PRAGMA page_size = 65536`, set before the first table is created or applied once with `VACUUM`, cuts the reads a lookup costs; a small database or one scanned once per run does best with the defaults.
 - Separate volumes when ownership, lifetime, or retention differs. Do not split files that require one atomic publication across volumes. More volumes and mounts also add work to every step that uses them.
 - Read-only APIs and dashboards should mount read-only views. If a shared summary is needed, a bounded writer can update it from completed records.
+
+## How volume I/O behaves
+
+Volumes are network-backed and read on demand in 64 KiB blocks. Opening a file costs nothing, an unread block costs a network round trip, and data a step has read stays cached while its memory allows, so scattered small reads across a large file are the expensive shape and sequential reads are cheap. A successful step publishes only the blocks it changed; fsync adds nothing, and a file deleted before the step ends costs nothing. `/tmp` and the working directory are memory-backed, 512 MiB each by default, inside the step’s memory limit, which the CPU count and memory a process reads from the system do not reflect.
+
+This matters only for a step whose time is dominated by one large file. For that step, prefer fewer and larger reads over scattered small ones, stream a scan rather than load the file whole, group writes so each block is dirtied once, and leave rereads to the file cache rather than a large cache inside the process, which counts toward the step’s memory. Keep a change only when a representative run before and after justifies it.
 
 When explaining the finished workflow, describe what the caller sees and when background work becomes visible. Mention storage details only when they affect the product’s behavior or the user asks.

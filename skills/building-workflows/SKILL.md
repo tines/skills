@@ -69,7 +69,7 @@ pinned = true
 ```
 
 - Colors: `pink`, `purple`, `teal`, `green`, `orange`, `red`, or `sky`.
-- `output`: makes stdout the HTTP response, which must be a complete HTTP response with `\r\n` line endings and a `\r\n\r\n` separator before the body. Without a reachable output step, 3B returns `202 Accepted` with no body.
+- `output`: makes stdout the HTTP response, which must be a complete HTTP response with a 200–599 status, `\r\n` line endings, and a `\r\n\r\n` separator before the body. Without a reachable output step, 3B returns `202 Accepted` with no body.
 - `route`: assigns an HTTP path. Live routes must be unique among workflows that share an edge host. `/` is that host’s catch-all and should be used only for an explicitly requested homepage.
 - `route_auth`: defaults to `space`.
 - `route_type`: exposes the route on the Links page as `webpage`, `api`, `webhook`, or `other`.
@@ -96,7 +96,7 @@ A step with no trigger receives empty stdin. A route step receives a complete RF
 
 `email_address` is a lowercase local-part of letters, digits, and internal dashes, up to 64 characters; it must begin and end with a letter or digit and be unique in the deployment’s configured inbound-email scope. The full address is deployment-specific.
 
-Each running step is limited to 1 vCPU, 2 GiB of memory with no swap, and 25,000,000 bytes per second of network ingress and egress independently, each with a 1 MiB burst. Stream or batch large data and split resource-intensive work across steps. An out-of-memory execution is killed; do not retry the same workload unchanged.
+Each running step is limited to 1 vCPU, 2 GiB of memory with no swap, and 25,000,000 bytes per second of network ingress and egress independently, each with a 1 MiB burst. Stream or batch large data and split resource-intensive work across steps. An out-of-memory execution is killed; do not retry the same workload unchanged. `/tmp` and the working directory are memory-backed and count toward that limit, and the figures a process reads from the system are not the step’s limits; `workflow-volume-design` describes how volume reads and writes are costed.
 
 ## Connectors
 
