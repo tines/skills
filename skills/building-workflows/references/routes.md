@@ -1,6 +1,6 @@
 # HTTP routes
 
-The responding step needs `output = true` and must emit a complete HTTP response with `\r\n` line endings and a `\r\n\r\n` separator before the body. Without a reachable output step, 3B returns `202 Accepted` with no body.
+The responding step needs `output = true` and must emit a complete HTTP response with `\r\n` line endings and a `\r\n\r\n` separator before the body. Without a reachable output step, 3B returns `202 Accepted` with no body. The status must be 200–599: 3B answers a 1xx response, including a `101` WebSocket upgrade, with `502 Bad Gateway`, because the response is replayed from the step’s stdout rather than negotiated on the caller’s connection. WebSockets are not available; stream a chunked response or have the client poll instead.
 
 | `route_auth`  | Access                                                    |
 | ------------- | --------------------------------------------------------- |
