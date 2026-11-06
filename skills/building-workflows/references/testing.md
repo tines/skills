@@ -1,6 +1,6 @@
 # Testing 3B workflow steps
 
-Run every changed step with representative input before committing or publishing. Read-only steps may run immediately. Get the user’s approval before a normal test run that sends messages, creates or changes external records, charges money, or has another side effect. A route step’s test input is an HTTP request; use the interface’s mock-request support when available.
+Run every changed step with representative input before committing or publishing. Read-only steps may run immediately. Get the user’s approval before a normal test run that sends messages, creates or changes external records, charges money, or has another side effect. A route step’s test input is an HTTP request; use the interface’s mock-request support when available. When the workflow uses a visitor-mode connector, also run each step its visitors open in a browser as a visitor who hasn’t connected; see “Connect screens” in [connectors.md](connectors.md).
 
 If a run fails, inspect that execution’s full logs, fix the cause, and rerun it. For downstream steps, use a real upstream output when possible. Use custom input only when the scenario needs data that the last upstream execution does not provide.
 
