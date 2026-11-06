@@ -54,6 +54,10 @@ Use paths relative to the skill directory. Include static dependencies in the bu
 
 Write 2–3 realistic prompts — the kind of thing someone would actually type — and run the AI with the skill enabled. Watch where it goes wrong, then tighten the skill: generalize from the failure rather than patching the one example, remove instructions that send it down unproductive paths, and re-run. Exercise references and scripts directly, including their failure cases. Repeat until it behaves the way you want across all your test prompts, not just one.
 
+## Saving the skill
+
+When you’ve drafted a skill in chat and the `proposeSkill` tool is available, call it with the name, description, and `SKILL.md` body instead of pasting the skill into your reply for the user to copy into 3B. The chat shows the user the full `SKILL.md` from that call. The user confirms, then reviews the new skill and saves it. Supporting files can be added from the skill’s Files tab afterward.
+
 ---
 
 _Adapted by 3B from Anthropic’s “skill-creator” skill (github.com/anthropics/skills), © Anthropic PBC, licensed under Apache-2.0. Modified for 3B’s Agent Skills bundles and sandboxed script execution._
