@@ -1,6 +1,6 @@
 ---
 name: workflow-volume-design
-description: Design reliable 3B workflows that use named volumes or filesystem state. Use whenever a workflow stores or shares files, persists state across runs, uses an embedded database, handles uploads, receives concurrent requests, builds reporting data, or needs temporary per-run files.
+description: Design reliable 3B workflows that use named volumes or filesystem state. Use whenever a workflow stores or shares files, persists state across runs, receives concurrent requests, must let only one request win (bookings, reservations, claims, unique names, limited stock, or deduplication), keeps counters or shared records, uses an embedded database, handles uploads, builds reporting data, or needs temporary per-run files.
 license: Apache-2.0
 compatibility: Tines 3B
 ---
@@ -15,51 +15,63 @@ Users describe the behavior they need, not a storage primitive. Choose file layo
 
 A volume is a named POSIX directory mounted at `/storage/<name>`. In Live, every workflow in a space that declares the same name mounts the same committed files. Draft branches have isolated files. `scope=run` gives one workflow run its own volume, shared by steps in that run that declare the same name and scope. A `:ro` mount is read-only.
 
-Writable mounts do not serialize executions. Two runs of the same step, different steps, or different Live workflows in the same space can write the same named volume at the same time. Run-scoped volumes are shared only by steps in one run, so separate runs do not write the same run-scoped volume.
+A step reads the volume as it was committed when the step started and writes into a private view. Other steps see the last committed version, never its partial writes. A failed step discards its changes. A successful step publishes each volume separately and atomically, so files that must be committed together belong in one volume.
 
-A step writes into a private view while it runs. Other steps see the last committed version, never its partial writes. A failed step discards its changes. A successful step publishes each volume separately, so files that must be committed together belong in one volume.
+Writable mounts do not lock. Two runs of the same step, different steps, or different Live workflows in the same space can write the same named volume at the same time. Run-scoped volumes are shared only by steps in one run, so separate runs do not write the same run-scoped volume.
 
-Overlapping runs that write different paths both publish. When overlapping runs change the same file, the run that publishes second fails with a volume conflict that names the volume and the file, and none of its changes to that volume are saved. An embedded database such as SQLite spreads one update across its main file and sidecar files like `-wal`, so overlapping writers to one database can corrupt it without any conflict. A routed step’s response reaches the caller before its volume changes publish, so a request step that rewrites a shared file can report success and then lose the write. Design every writer so overlapping runs never change the same file, and have request steps only create new, uniquely named files.
+When a step publishes, 3B checks every file and directory entry the step created, changed, or deleted. If any of them changed after the step started, the publication fails with a volume conflict that names the volume and the file, the step fails, and none of its changes to that volume are saved. Overlapping runs that write different paths both publish. Two runs that create the same new file conflict just as two runs that edit it do, while two runs that create the same directory do not. So among overlapping runs that change the same file, at most one publishes. Only files a step writes are checked. A file it only read can change underneath it without a conflict. This is the coordination tool volumes provide, and the patterns below build on it.
+
+A routed step’s response reaches the caller before its volume changes publish. A request step therefore cannot promise its caller that a write was saved. When the caller needs the outcome, respond that the request is pending and let the caller read the published result. Linked downstream steps start only after the step’s changes publish, so send confirmations, notifications, and other side effects that depend on a write from a downstream step.
 
 Follow the [secret-storage prohibition](../building-workflows/SKILL.md#volumes). Use stdin and stdout for small handoffs between adjacent steps. Use volumes when steps need filesystem paths, many related files, random access, or data that survives a step.
 
-## Shape the request path
+## Choose a pattern by the guarantee
 
-Design the common request around the answer its caller needs. When possible, one entry step validates the request, reads only that subject’s current view, writes any necessary update to a unique path, and responds. Mount only the volumes it uses. A direct response should not also start downstream steps that merely decide there is no work. Keep connector calls, large scans, aggregation, and database updates off a frequent request path when the product permits a short delay.
+Decide what the product must guarantee when requests overlap, then pick the matching pattern. Plain files support every pattern here.
 
-For concurrent requests, give each delivery, device, customer, or job a distinct record path. Use stable subject keys for direct lookups, unique IDs for new immutable records, and idempotency keys that survive retries. Do not append from many runs to one shared file or update one shared embedded database from request steps. A small read-only file per subject often suffices for point lookups. Use an embedded database when its queries or transactions justify it. Keep lookup work proportional to the subject being requested, not to all retained records.
+- **Independent records.** Submissions, events, uploads, and messages that never compete get a new unique path each, such as `incoming/<date>/<unique-id>.json`. These writes never conflict.
+- **One winner per key.** When at most one request may succeed for something, derive a stable key for it and use one claim file at `claims/<key>.json`. Examples are a booking for a resource and time slot, a claim on a task, a unique name, a unit of limited stock, an idempotency key, or a lease. If the claim file exists, answer right away that the key is taken. Otherwise create it with the request’s ID and respond that the request is pending, naming the key and the request ID. If two requests race, the later publication conflicts and its claim is discarded. The caller confirms the outcome by reading that claim file and comparing the request ID, which gives a final answer as soon as either claim publishes. Releasing the claim deletes the file, and a deletion that overlaps another change to that file also conflicts. When a rule spans more than one key, claim every key it depends on in the same volume, so the claims publish or fail together. For one booking per person per day, claim both the resource’s slot and the person’s day. For a time range, claim each fixed slot it covers.
+- **Shared state changed in place.** For a counter, a small status document, or one subject’s record that several runs update, read the file, change it, and write it back. A conflict means another run changed it first, and the losing change is gone. Change shared state in place from background steps that can repeat the work, and send request changes through an inbox. If a request step must change it, record the request ID in the file so a lookup can confirm the change landed. Partition this state by subject so unrelated updates never touch the same file.
+- **State derived from many inputs.** For indexes, aggregates, reports, and databases that many requests contribute to, request steps write independent records to an inbox. A consumer step applies a bounded batch, updates the derived files, and deletes the applied input in the same volume, so they publish together. Consumers need no lock. Every consumer run that applies input changes the same derived or progress file, so if two runs overlap, the second publication conflicts and its batch stays in the inbox for the next run. Recheck current state when applying each input, because it may be stale by then, and record rejected input or its outcome when the product needs it.
+- **The caller needs the outcome.** Because responses precede publication, return a request ID, then serve the result from a read-only lookup of published state, such as the claim file, the record, or an outcome file the consumer writes. A page can poll that lookup until the result appears. Bound the polling, and if nothing has published after several seconds, treat the attempt as failed and let the caller resubmit with the same request ID.
 
 ```text
-request → validate → read views/<subject-id>.json
-                   → write pending/<bucket>/<unique-id>.json → respond
-
-scheduled work → apply bounded pending batch → refresh affected views → clean up applied input
+request  → validate → read claims/<key>.json or views/<subject-id>.json
+                    → create claims/<key>.json or inbox/<bucket>/<unique-id>.json → respond pending
+lookup   → read claims/<key>.json or outcomes/<request-id>.json from a read-only mount
+consumer → apply a bounded inbox batch → update derived files → delete the applied input
 ```
 
-Only create downstream executions for work that must follow this request. A scheduled or otherwise low-concurrency step can update derived state separately when a brief delay is acceptable. Preserve the required authentication, response signing, freshness, and failure behavior. If the caller needs an immediate result that cannot be computed from current and pending state, keep the necessary work on its response path.
+A conflict is the expected result when overlapping runs compete. The losing step shows as failed with a volume conflict, and 3B does not run it again, even when the step sets `retry_seconds`. Design so that losing is harmless. A claim that lost is visible to the caller’s lookup, and input a consumer did not apply stays in the inbox for the next run. Keep input until the change that consumed it is published, and give each request an idempotency key that survives retries. When a user asks about these failed runs, explain that they are the losing side of a race and that nothing was lost. Do not reach for an external database or a separate service only to serialize writes. Recommend one when the product needs queries, transactions across many records, or a synchronous answer these patterns cannot give.
 
-## Give shared state an owner
+## Shape the request path
 
-Default to independent files under a writable volume. Runs writing distinct paths can overlap without serializing the whole step. Use read-only mounts for steps that only read.
+Design the common request around the answer its caller needs. When possible, one entry step validates the request, reads only that subject’s current view, writes a new record or claim file, and responds. Mount only the volumes it uses. A direct response should not also start downstream steps that merely decide there is no work. Keep connector calls, large scans, aggregation, and database updates off a frequent request path when the product permits a short delay.
+
+For concurrent requests, give each delivery, device, customer, or job a distinct record path. Use stable subject keys for direct lookups, unique IDs for new immutable records, and idempotency keys that survive retries. Do not append from many runs to one shared file or update a shared database from request steps. A small file per subject often suffices for point lookups. Mount a volume read-only in steps that only read it.
 
 ```Dockerfile
 VOLUME ["incoming"]
 VOLUME ["views:ro"]
 ```
 
-If an embedded database, report, or index must be updated, give each mutable file group one scheduled or otherwise low-concurrency writer. This applies to SQLite, DuckDB, and similar file-backed databases. Request steps may query a published database in read-only mode, but should write independent pending records instead of changing it. Ensure writer runs cannot overlap on the same database files. A short timeout alone does not guarantee this when starts are late or retries occur. If one writer cannot keep up, partition by a stable key into independently owned files, or use a store built for concurrent updates.
+Keep lookup work proportional to the subject being requested, not to all retained records.
 
-Keep a database and its sidecars together. If pending records, derived state, and affected views are in the same volume, one successful writer step can publish their changes together. If input and derived state are in different volumes, their publications are separate. Record an idempotency key with the durable derived update and confirm it in a later run before deleting the input. Recheck state when applying delayed work and preserve rejected work or its outcome when the product needs it.
+Only create downstream executions for work that must follow this request. A scheduled or otherwise low-concurrency step can update derived state separately when a brief delay is acceptable. Preserve the required authentication, response signing, freshness, and failure behavior. If the caller needs an immediate result that cannot be computed from current and pending state, keep the necessary work on its response path.
+
+## Embedded databases
+
+Start with files per record, key, or subject. Use an embedded database only when the product needs its queries or transactions. A database file is shared state that is changed in place. Request steps may query a published copy through a read-only mount but should send changes through an inbox to a consumer. When the step ends, every committed write must be in the main database file, with no journal or write-ahead log left beside it. Otherwise overlapping writers can publish mismatched working files without a conflict and corrupt the database. For SQLite, set `PRAGMA journal_mode=DELETE` on every open, because write-ahead logging persists in the file and some frameworks enable it. For DuckDB, run `CHECKPOINT` before closing. Close the database before the step exits, and keep it in one volume with the inbox that feeds it. If one consumer cannot keep up, partition the database by a stable key into independent files.
 
 ## Bound background work and storage
 
-Move aggregation, database updates, view refreshes, and cleanup out of frequent entry steps when a short delay is acceptable. Give each run a fixed record and time budget, and prevent overlapping runs that update the same files. When a tick only triggers a scan of durable pending records, skip obsolete ticks instead of replaying them after a queue delay. Apply the bound before reading, parsing, or sorting a growing directory. Use direct paths or bounded time- or key-based buckets so selecting the next batch stays cheap. A schedule must drain sustained input faster than records arrive. Otherwise, its queue and volume usage grow even when each run succeeds.
+Move aggregation, database updates, view refreshes, and cleanup out of frequent entry steps when a short delay is acceptable. Give each run a fixed record and time budget. Overlapping consumer runs are safe but waste work, so keep each run short enough to finish before the next one starts. When a tick only triggers a scan of durable pending records, skip obsolete ticks instead of replaying them after a queue delay. Apply the bound before reading, parsing, or sorting a growing directory. Use direct paths or bounded time- or key-based buckets so selecting the next batch stays cheap. A schedule must drain sustained input faster than records arrive. Otherwise, its queue and volume usage grow even when each run succeeds.
 
-Remove or compact applied files according to the required retention period. Keep necessary outcomes and idempotency information, but avoid retaining full payloads twice without a product need. Estimate retained logical bytes from input size, arrival rate, derived files, database sidecars, and retention time. All volumes in a space share the space’s storage limit, and new runs in the space are refused once it is reached, so inspect actual volume usage when it may affect the design. Do not silently drop required data to save space.
+Remove or compact applied files according to the required retention period. Keep necessary outcomes and idempotency information, but avoid retaining full payloads twice without a product need. If input and derived state are in different volumes, their publications are separate, so record the idempotency key with the derived update and confirm it in a later run before deleting the input. Estimate retained logical bytes from input size, arrival rate, derived files, database working files, and retention time. All volumes in a space share the space’s storage limit, and new runs in the space are refused once it is reached, so inspect actual volume usage when it may affect the design. Do not silently drop required data to save space.
 
 For source data, inspect metadata and filter before downloading when possible. Fetch only needed files, and use pagination, change feeds, ranges, streams, or batches for larger inputs. If the complete collection is required, plan ingestion, retention, and recovery from interruption rather than relying on one large download.
 
-Check representative requests, duplicates, and sustained traffic. Inspect request latency, waiting executions, background run duration, oldest pending age, pending files and bytes, and volume usage. A successful scheduled run is not enough. Pending work must repeatedly drain under the expected arrival rate.
+Check representative requests, duplicates, overlapping requests for the same key, and sustained traffic. Inspect request latency, waiting executions, background run duration, oldest pending age, pending files and bytes, and volume usage. A successful scheduled run is not enough. Pending work must repeatedly drain under the expected arrival rate.
 
 ## Lifetime and draft storage
 
@@ -72,9 +84,9 @@ Use `VOLUME ["work:scope=run"]` for files needed only within one workflow run. A
 ## Other useful shapes
 
 - Independent uploads, generated artifacts, and cache entries can use one directory per job or source key. Readers can use those paths directly when no cross-job query is needed.
-- SQLite suits indexed mutable state with one writer per database file. DuckDB suits batch analysis over tabular data. Other embedded databases can also work when their read and write behavior fits the workflow. Keep each database and its working files under one writer, and use a remote source when it can answer the required query without a local copy. When a SQLite database grows to hundreds of megabytes read by scattered lookups, `PRAGMA page_size = 65536`, set before the first table is created or applied once with `VACUUM`, cuts the reads a lookup costs; a small database or one scanned once per run does best with the defaults.
+- DuckDB suits batch analysis over tabular data. When a SQLite database grows to hundreds of megabytes read by scattered lookups, `PRAGMA page_size = 65536`, set before the first table is created or applied once with `VACUUM`, cuts the reads a lookup costs. A small database or one scanned once per run does best with the defaults. Use a remote source when it can answer the required query without a local copy.
 - Separate volumes when ownership, lifetime, or retention differs. Do not split files that require one atomic publication across volumes. More volumes and mounts also add work to every step that uses them.
-- Read-only APIs and dashboards should mount read-only views. If a shared summary is needed, a bounded writer can update it from completed records.
+- Read-only APIs and dashboards should mount read-only views. If a shared summary is needed, a consumer can update it from completed records.
 
 ## How volume I/O behaves
 
@@ -82,4 +94,4 @@ Volumes are network-backed and read on demand in 64 KiB blocks. Opening a file c
 
 This matters only for a step whose time is dominated by one large file. For that step, prefer fewer and larger reads over scattered small ones, stream a scan rather than load the file whole, group writes so each block is dirtied once, and leave rereads to the file cache rather than a large cache inside the process, which counts toward the step’s memory. Keep a change only when a representative run before and after justifies it.
 
-When explaining the finished workflow, describe what the caller sees and when background work becomes visible. Mention storage details only when they affect the product’s behavior or the user asks.
+When explaining the finished workflow, describe what the caller sees, which results are pending at first, and when they become final. Mention storage details only when they affect the product’s behavior or the user asks.
