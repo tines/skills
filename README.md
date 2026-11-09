@@ -4,9 +4,13 @@ A collection of [Agent Skills](https://agentskills.io/) for working with Tines p
 
 [![skills.sh](https://skills.sh/b/tines/skills)](https://skills.sh/tines/skills)
 
+## Use with the 3B MCP server
+
+These are the same built-in skills available to the Tines 3B agent and through the 3B MCP server. When you connect an external client such as Claude or Kiro to the 3B MCP server, it can discover skills with `list_skills`, read their instructions with `get_skill`, and read supporting files with `get_skill_file`. No separate skill installation is required for this access.
+
 ## Install
 
-Install the collection with the skills CLI:
+To make the skills available locally in an Agent Skills-compatible client, install the collection with the skills CLI:
 
 ```bash
 npx skills add tines/skills
