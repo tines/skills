@@ -107,7 +107,7 @@ Use a connector whenever a step needs authenticated access to another service: w
 Volumes are named POSIX directories mounted below `/storage`. Names contain 1–63 lowercase letters, digits, dashes, or underscores and begin with a letter or digit. Declare each mount with its own `VOLUME` instruction: a list such as `VOLUME ["notes", "drafts"]` is rejected.
 
 - `VOLUME ["state:ro"]` mounts `state` read-only.
-- `VOLUME ["state"]` allows overlapping writers; give concurrent runs distinct paths.
+- `VOLUME ["state"]` allows overlapping writers. When overlapping runs change the same file, only the first to publish is saved.
 - `VOLUME ["scratch:scope=run"]` gives one workflow run isolated writable storage shared by steps in that run.
 
 In Live, a volume belongs to the space and is selected by name, so workflows in the same space share a named volume. Draft branches have isolated files that are discarded with the draft. For any named volume or filesystem-backed state, use `workflow-volume-design` before choosing mounts or file layout.
