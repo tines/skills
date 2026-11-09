@@ -73,6 +73,7 @@ The page must not jump. Reserve space so changing a filter, opening a custom-ran
 - Borrow techniques from data journalism (Tufte, Few, Economist, Bostock): labeled round-number gridlines, distribution views (beeswarm/strip with median, mean, percentiles). Delete decoration that carries no information — stray outlines, redundant legends, a number shown twice.
 - Make charts self-explanatory: if you'd explain an encoding in chat, put that in the UI.
 - Give series a dedicated categorical color scale (distinct from the UI's brand/chrome colors). Related categories get related colors — shades of a hue per family, a distinct hue per group — and treat a natural grouping as its own dimension. Ask the user whether the audience needs a color-blind-safe palette; if so, use a qualitative scheme designed for it (e.g. Paul Tol's / SRON schemes) and back color with a second cue (shape, pattern, direct labels).
+- Charts follow the system light/dark theme like the rest of the UI, with axis, gridline, label, tooltip, and series colors and a series scale tuned for each mode. Chart colors are usually set in code, so choose them from `matchMedia('(prefers-color-scheme: dark)')` and re-render when it changes.
 - Sort each chart by its meaningful axis; put axis labels outside the plot so marks never cover them.
 
 ## Affordances and accessibility
