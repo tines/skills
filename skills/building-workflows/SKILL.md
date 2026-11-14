@@ -90,7 +90,7 @@ Triggers compose with links. A step with `route` can also be a downstream target
 
 Zero-byte stdout suppresses downstream execution. A step reports failure only through a nonzero exit status. Do not catch an error, log it, and continue unless success is intentional. 3B retains at most 10 KiB of stderr as its diagnostic output; stdout is the workflow data channel.
 
-A step with no trigger receives empty stdin. A route step receives a complete RFC 7230 HTTP request. An email step receives the raw RFC 822 message.
+A step with no trigger receives empty stdin. A route step receives a complete RFC 7230 HTTP request. An email step receives the raw RFC 822 message. For tenants with the `inbound-email-authentication` feature flag on, 3B prepends one `Authentication-Results: 3b; …` header carrying its DKIM, SPF, and DMARC results and removes any such header the sender supplied. `From:` is sender-controlled, so check `dmarc=pass` in that header before trusting it; `spf` is omitted when 3B can’t see the sending server’s address. Without the flag every header, including `Authentication-Results`, is sender-controlled, so confirm the flag is on before relying on it.
 
 ## Other runtime contracts
 
