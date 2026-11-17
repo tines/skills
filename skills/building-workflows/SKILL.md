@@ -98,6 +98,8 @@ A step with no trigger receives empty stdin. A route step receives a complete RF
 
 Each running step is limited to 1 vCPU, 2 GiB of memory with no swap, and 25,000,000 bytes per second of network ingress and egress independently, each with a 1 MiB burst. Stream or batch large data and split resource-intensive work across steps. An out-of-memory execution is killed; do not retry the same workload unchanged. `/tmp` and the working directory are memory-backed and count toward that limit, and the figures a process reads from the system are not the step’s limits; `workflow-volume-design` describes how volume reads and writes are costed.
 
+3B inspects a step’s outbound TLS, so the certificate a step sees from a public server is issued by 3B’s proxy CA, which steps trust. It carries the server’s own validity dates, subject, and DNS and IP names, so expiry checks and hostname verification behave as they would outside 3B, while certificate pinning and checks of the issuer, chain, or fingerprint see the proxy’s certificate.
+
 ## Connectors
 
 Use a connector whenever a step needs authenticated access to another service: write ordinary requests without `Authorization` headers, API keys, or credential placeholders, then attach the connector to the step through the current interface’s connector tooling, and detach it the same way. Never ask a user to paste a key, token, password, username, or other credential into chat. If a credential appears anyway, do not put it in files or commands; use a connector and tell the user to rotate the exposed credential. If a connector cannot support the required authentication, explain the limitation. Do not build credential-entry forms or routes as a workaround: workflow request bodies are retained as execution inputs.
