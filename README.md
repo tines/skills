@@ -71,12 +71,13 @@ Skills can target different Tines products. Check each skill’s `compatibility`
 
 ### Tines and agent development
 
-| Skill                                              | Purpose                                                    |
-| -------------------------------------------------- | ---------------------------------------------------------- |
-| [`claude-api`](skills/claude-api/)                 | Build, debug, and optimize code that calls the Claude API. |
-| [`skill-creator`](skills/skill-creator/)           | Write and improve 3B Agent Skills.                         |
-| [`tines-cases`](skills/tines-cases/)               | Work with Tines Cases and Records from 3B.                 |
-| [`tines-export-to-3b`](skills/tines-export-to-3b/) | Rebuild a Tines story export as a 3B workflow.             |
+| Skill                                              | Purpose                                                                                 |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| [`claude-api`](skills/claude-api/)                 | Build, debug, and optimize code that calls the Claude API.                              |
+| [`product-questions`](skills/product-questions/)   | Answer questions about using or running 3B, from skills first and then the public docs. |
+| [`skill-creator`](skills/skill-creator/)           | Write and improve 3B Agent Skills.                                                      |
+| [`tines-cases`](skills/tines-cases/)               | Work with Tines Cases and Records from 3B.                                              |
+| [`tines-export-to-3b`](skills/tines-export-to-3b/) | Rebuild a Tines story export as a 3B workflow.                                          |
 
 ## Structure
 

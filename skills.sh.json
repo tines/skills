@@ -44,6 +44,7 @@
       "description": "Skills for Tines products, model APIs, and Agent Skills development.",
       "skills": [
         "claude-api",
+        "product-questions",
         "skill-creator",
         "tines-cases",
         "tines-export-to-3b"
