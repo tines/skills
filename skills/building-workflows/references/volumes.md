@@ -1,6 +1,6 @@
 # Volumes
 
-A step writes through a private view and publishes its changes only when it succeeds. `VOLUME ["state"]` allows overlapping writers. When two overlapping runs create, change, or delete the same file, the one that publishes second fails with a conflict and none of its changes to that volume are saved. Give independent inputs unique paths, use one claim file per key when only one request may win, and move shared database updates and cleanup to bounded background work when the product allows it. `workflow-volume-design` describes these patterns.
+A step writes through a private view and publishes its changes only when it succeeds. `VOLUME ["state"]` allows overlapping writers. When two overlapping runs create, change, or delete the same file, the one that publishes second fails with a conflict and none of its changes to that volume are saved, unless the runs took turns under a file lock on it. Give independent inputs unique paths, use one claim file per key when only one request may win, lock a shared file while changing it in place, and move shared database updates and cleanup to bounded background work when the product allows it. `workflow-volume-design` describes these patterns.
 
 ## Draft storage
 
