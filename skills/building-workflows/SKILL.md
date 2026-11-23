@@ -92,6 +92,10 @@ Zero-byte stdout suppresses downstream execution. A step reports failure only th
 
 A step with no trigger receives empty stdin. A route step receives a complete RFC 7230 HTTP request. An email step receives the raw RFC 822 message. 3B prepends one `Authentication-Results: 3b; …` header carrying its DKIM, SPF, and DMARC results and removes any such header the sender supplied. `From:` is sender-controlled, so check `dmarc=pass` in that header before trusting it; `spf` is omitted when 3B can’t see the sending server’s address.
 
+## External requests
+
+Third-party APIs rate-limit, fail transiently, and cut responses short, so a step that calls one must survive that without losing work. Send every request through one helper with a bounded retry: retry 429, 408, 5xx, timeouts, and dropped connections with exponential backoff and jitter; wait at least as long as `Retry-After` says, whether seconds or an HTTP date; and fail immediately on other 4xx. Read and parse the body inside the retry, because a truncated `200` surfaces only when parsing fails. Size each timeout to what the API needs rather than a short default, and budget every wait, request, and body read against the step’s remaining `timeout`: when the next `Retry-After` or attempt would not fit, fail with an error that says so instead of being killed mid-wait. Retry a write only when it is idempotent or the API accepts an idempotency key. Prefer this to `retry_seconds`, which replays the whole step and every side effect it already made.
+
 ## Other runtime contracts
 
 `email_address` is a lowercase local-part of letters, digits, and internal dashes, up to 64 characters; it must begin and end with a letter or digit and be unique in the deployment’s configured inbound-email scope. The full address is deployment-specific.
