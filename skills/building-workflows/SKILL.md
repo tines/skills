@@ -26,7 +26,7 @@ README.md
   ...
 ```
 
-Within a workflow checkout, each top-level directory is a uniquely named step. Keep a `README.md` at the root and in every step describing purpose, trigger, and behavior; the UI already displays the workflow or step name, so do not repeat it as the opening heading.
+Within a workflow checkout, each top-level directory is a uniquely named step. Keep a `README.md` at the root and in every step describing purpose, trigger, and behavior; the UI already displays the workflow or step name, so do not repeat it as the opening heading. A new workflow’s root `README.md` starts as the placeholder “Describe what this workflow does and how to use it.”, which the UI shows as no README: replace it before you finish building rather than treating the file’s existence as done.
 
 A cloned 3B space adds one directory per workflow:
 
