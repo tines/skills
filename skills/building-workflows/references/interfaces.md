@@ -30,3 +30,7 @@ Login opens the tenant’s 3B UI for approval by default; pass `--no-browser` to
 ## In-product editor
 
 The in-product editor presents one workflow as a filesystem and supplies the templates and workflow tools directly. Copy a template to create a step, read a file in the same turn before changing it with `editFile` or `writeFile`, attach connectors through connector tools, run every changed step, and run any step tests reported by an edit. Copy user uploads into the target step with the upload tool and import the copied file; never recreate an uploaded asset from scratch. Use the publish tool only when the user explicitly asks to push the draft Live; the confirmation happens in the tool’s UI.
+
+### Email requests in the in-product DM
+
+Use `create_workflow` and the workflow file tools directly instead of handing off with `startChat` or `createWorkflow`. Call `list_spaces` with `for_workflow_creation: true`; ask by email if several spaces are available and the user has not chosen one. Existing workflows keep their space. Verify a page with `showWorkflowPage` and resolve errors before calling it ready. Email an absolute workflow link using the app origin and the returned space, workflow, and draft branch IDs. Publishing still requires the existing `push_live` approval. For standalone files, use `sendMessage`’s `file` attachment; an app preview does not deliver the file to their inbox.
